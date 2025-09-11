@@ -194,6 +194,7 @@ if "inline_end" not in st.session_state:
 if "inline_use" not in st.session_state:
     st.session_state["inline_use"] = False
 
+
 # ======= Sidebar =======
 with st.sidebar:
     st.markdown(f'''
@@ -202,13 +203,11 @@ with st.sidebar:
         </div>
     ''', unsafe_allow_html=True)
 
-    db_tz_mode = st.radio(
-        "🌍 Timezone do DB:",
-        ["UTC", "America/Sao_Paulo (BRT)"],
-        index=0,
-        help="Selecione como os timestamps estão armazenados no banco"
-    )
-    mode = "UTC" if db_tz_mode.startswith("UTC") else "BRT"
+    # 🔀 NOVO: seletor de área
+    area = st.selectbox("🔀 Área de análise", ["NetDepósito", "Cassino"])
+
+    # 🔒 Fixar timezone em BRT (sem opção de UTC)
+    mode = "BRT"
 
     st.markdown("---")
 
@@ -249,16 +248,14 @@ with st.sidebar:
             st.session_state["inline_use"] = False
             st.rerun()
 
-    # Converte para timestamps conforme o modo
-    if mode == "UTC":
-        start_ts, end_ts = utc_bounds_from_brt_bounds(start_brt, end_brt_inclusive)
-    else:
-        start_ts, end_ts = start_brt, end_brt_inclusive
+    # Como o modo é fixo em BRT, não há conversão aqui
+    start_ts, end_ts = start_brt, end_brt_inclusive
 
     st.markdown("---")
 
-    client_filter = st.text_input("🔍 Client ID", value="", placeholder="Filtrar por ID…")
-    op_filter = st.selectbox("💰 Operação", ["Todos", "Depósitos", "Saques"])
+    # 🔎 Filtro por Client ID (específico p/ NetDepósito)
+    client_filter = st.text_input("🔍 Client ID (NetDepósito)", value="", placeholder="Filtrar por ID…")
+    op_filter = st.selectbox("💰 Operação (NetDepósito)", ["Todos", "Depósitos", "Saques"])
 
     st.markdown(f'''
         <div style="background: {COLOR_BG}; padding: 10px; border-radius: 8px; border-left: 4px solid {COLOR_ACCENT}; margin-top: 20px;">
@@ -277,6 +274,7 @@ with st.sidebar:
                 st.write(pd.read_sql(text(q), conn))
 
 params = {"start_ts": fmt(start_ts), "end_ts": fmt(end_ts)}
+
 
 # ======= Helpers =======
 @st.cache_data(show_spinner=False, ttl=60)
@@ -504,8 +502,9 @@ else:
 net = total_deps - total_saques
 
 left, right = st.columns([3, 3])
-with left:
-    st.markdown(f'''
+if area == "NetDepósito":
+    with left:
+        st.markdown(f'''
         <div class="section-header inline-row">
             <div class="section-title">📊 Métricas Principais</div>
         </div>
@@ -869,8 +868,9 @@ with c2:
 # =========================
 # 🎮 Rodadas por Cliente (auto-resolve colunas)
 # =========================
+if area == "Cassino":
 
-st.markdown(f'''
+    st.markdown(f'''
     <div class="section-header">
         <div class="section-title">🎮 Rodadas por Cliente</div>
     </div>
@@ -1124,6 +1124,11 @@ with tab_metrics:
         # ---- Cálculos base (60m) ----
         media_gastos = float(df_rodadas_60["gastos"].mean()) if "gastos" in df_rodadas_60 else 0.0
         media_ganhos = float(df_rodadas_60["ganhos"].mean()) if "ganhos" in df_rodadas_60 else 0.0
+         # NOVO: estatísticas de 60 min
+        max_aposta = float(df_rodadas_60["gastos"].max()) if "gastos" in df_rodadas_60 else 0.0
+        max_ganho  = float(df_rodadas_60["ganhos"].max()) if "ganhos" in df_rodadas_60 else 0.0
+        total_gasto_60 = float(df_rodadas_60["gastos"].sum()) if "gastos" in df_rodadas_60 else 0.0
+        total_ganho_60 = float(df_rodadas_60["ganhos"].sum()) if "ganhos" in df_rodadas_60 else 0.0
 
         # jogo mais jogado
         jogo_mais_jogado, qtd_jogo_mais = "—", 0
@@ -1161,7 +1166,40 @@ with tab_metrics:
         if not top_rodadas_clientes.empty:
             best_rodadas_id  = str(top_rodadas_clientes.iloc[0]["cliente_id"])
             best_rodadas_qtd = int(top_rodadas_clientes.iloc[0]["rodadas"])
-
+# ---- NOVOS cartões: aposta máxima, maior ganho, totais 60m ----
+        n1, n2, n3, n4 = st.columns(4)
+        with n1:
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">⬆️ Aposta mais alta (60m)</div>
+                    <div class="metric-value">{to_brl(max_aposta)}</div>
+                    <div class="metric-delta">Maior "gastos"</div>
+                </div>
+            ''', unsafe_allow_html=True)
+        with n2:
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">🏅 Maior ganho (60m)</div>
+                    <div class="metric-value">{to_brl(max_ganho)}</div>
+                    <div class="metric-delta">Pico de "ganhos"</div>
+                </div>
+            ''', unsafe_allow_html=True)
+        with n3:
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">🧾 Total gasto (60m)</div>
+                    <div class="metric-value">{to_brl(total_gasto_60)}</div>
+                    <div class="metric-delta">Somatório de "gastos"</div>
+                </div>
+            ''', unsafe_allow_html=True)
+        with n4:
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">💎 Total ganho (60m)</div>
+                    <div class="metric-value">{to_brl(total_ganho_60)}</div>
+                    <div class="metric-delta">Somatório de "ganhos"</div>
+                </div>
+            ''', unsafe_allow_html=True)
         # ---- Cartões (mesmo estilo dos KPIs principais) ----
         m1, m2, m3, m4 = st.columns(4)
         with m1:
