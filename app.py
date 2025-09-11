@@ -866,3 +866,384 @@ with c2:
     st.markdown("### 🧮 Top Qtd – Depósitos")
     st.dataframe(df_top_qtd_deps, use_container_width=True)
     create_download_button(df_top_qtd_deps, "📥 Baixar Top Qtd Depósitos", "top_qtd_depositos.csv")
+# =========================
+# 🎮 Rodadas por Cliente (auto-resolve colunas)
+# =========================
+
+st.markdown(f'''
+    <div class="section-header">
+        <div class="section-title">🎮 Rodadas por Cliente</div>
+    </div>
+''', unsafe_allow_html=True)
+
+# -- Utils: últimos 60 minutos em BRT --
+def _last_minutes_bounds_brt(minutes: int = 60):
+    now_brt = datetime.now(TZ_BRT)
+    start_brt = now_brt - timedelta(minutes=minutes)
+    end_brt_inclusive = now_brt + timedelta(seconds=1)  # janela [start, end)
+    return start_brt, end_brt_inclusive
+
+def _to_mode_bounds(start_brt: datetime, end_brt_inclusive: datetime, mode: str):
+    if mode == "UTC":
+        return utc_bounds_from_brt_bounds(start_brt, end_brt_inclusive)
+    return start_brt, end_brt_inclusive
+
+# -- Descobrir colunas reais na tabela rodadas_cliente --
+
+@st.cache_data(show_spinner=False, ttl=120)
+def _get_table_columns(schema: str, table: str) -> set[str]:
+    """
+    Lê INFORMATION_SCHEMA para descobrir os nomes reais das colunas.
+    Retorna um conjunto em minúsculas para facilitar o match.
+    """
+    q = """
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = :table
+    """
+    with engine.connect() as conn:
+        cols = pd.read_sql(text(q), conn, params={"schema": schema, "table": table})
+    return set(c.lower() for c in cols["COLUMN_NAME"].astype(str))
+
+def _pick(existing: set[str], candidates: list[str]) -> str | None:
+    """
+    Retorna o primeiro nome de coluna, dentre 'candidates',
+    que existir em 'existing' (case-insensitive).
+    """
+    for c in candidates:
+        if c.lower() in existing:
+            return c
+    return None
+
+# === (ADD) – Info de coluna no INFORMATION_SCHEMA ===
+@st.cache_data(show_spinner=False, ttl=120)
+def _get_column_info(schema: str, table: str, column: str) -> dict:
+    """
+    Retorna metadados da coluna (data_type, column_type, numeric_precision, etc.).
+    Usado para decidir como transformar a coluna de tempo em DATETIME.
+    """
+    q = """
+        SELECT
+            DATA_TYPE               AS data_type,
+            COLUMN_TYPE             AS column_type,
+            NUMERIC_PRECISION       AS numeric_precision,
+            NUMERIC_SCALE           AS numeric_scale,
+            DATETIME_PRECISION      AS datetime_precision,
+            CHARACTER_MAXIMUM_LENGTH AS char_len
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = :table AND COLUMN_NAME = :col
+        LIMIT 1
+    """
+    with engine.connect() as conn:
+        df = pd.read_sql(text(q), conn, params={"schema": schema, "table": table, "col": column})
+    return {} if df.empty else df.iloc[0].to_dict()
+
+# === (ADD) – Builder de expressão base de timestamp ===
+def _build_ts_base_expr(created_col: str) -> str:
+    """
+    Retorna a expressão SQL (MySQL) que produz um DATETIME a partir da coluna de criação.
+    Casos suportados:
+      - DATETIME/TIMESTAMP -> usa direto (r.`col`)
+      - INT/BIGINT/DECIMAL -> Unix epoch (segundos)     -> FROM_UNIXTIME(r.`col`)
+      - INT/BIGINT/DECIMAL com "13+ dígitos" (ms)       -> FROM_UNIXTIME(r.`col`/1000.0)
+      - VARCHAR/TEXT no formato 'YYYY-MM-DD HH:MM:SS'    -> STR_TO_DATE(r.`col`, '%Y-%m-%d %H:%i:%s')
+    Se não for possível inferir, retorna r.`col` (deixa como está).
+    """
+    info = _get_column_info(db_name or "", "rodadas_cliente", created_col)
+    dt = (info.get("data_type") or "").lower()
+
+    col_sql = f"r.`{created_col}`"
+
+    # 1) Tipos temporais nativos
+    if dt in ("timestamp", "datetime", "date"):
+        return col_sql
+
+    # 2) Numéricos -> tratar como epoch
+    if dt in ("int", "integer", "bigint", "smallint", "mediumint", "tinyint", "decimal", "numeric", "double", "float", "real"):
+        # Heurística: precisão >= 13 => provavelmente milissegundos
+        numeric_precision = info.get("numeric_precision")
+        numeric_scale = info.get("numeric_scale")
+        if numeric_precision is not None:
+            try:
+                if int(numeric_precision) >= 13 and (numeric_scale is None or int(numeric_scale) == 0):
+                    return f"FROM_UNIXTIME({col_sql}/1000.0)"
+            except Exception:
+                pass
+        # padrão: epoch em segundos
+        return f"FROM_UNIXTIME({col_sql})"
+
+    # 3) Strings comuns -> tentar parse ISO padrão
+    if dt in ("varchar", "char", "text", "longtext", "mediumtext", "tinytext"):
+        return f"STR_TO_DATE({col_sql}, '%Y-%m-%d %H:%i:%s')"
+
+    # 4) Fallback
+    return col_sql
+
+@st.cache_data(show_spinner=False, ttl=120)
+def _resolve_rounds_columns() -> dict:
+    existing = _get_table_columns(db_name or "", "rodadas_cliente")
+    col_cliente   = _pick(existing, ["cliente_id","client_id","player_id","user_id","id_cliente"])
+    col_game      = _pick(existing, ["game_name","game","game_title","nome_jogo"])
+    col_provider  = _pick(existing, ["provider_name","provider","vendor","studio"])
+    col_gastos    = _pick(existing, ["gastos","bet","bet_value","wager","amount_bet","stake","valor_apostado"])
+    col_ganhos    = _pick(existing, ["ganhos","win","win_value","amount_win","payout","lucro"])
+    col_created   = _pick(existing, ["created_at","create_time","timestamp","createdat","inserted_at","dt_created"])
+
+    faltando = [lbl for lbl, real in [
+        ("cliente_id", col_cliente),
+        ("game_name", col_game),
+        ("provider_name", col_provider),
+        ("gastos", col_gastos),
+        ("ganhos", col_ganhos),
+        ("created_at", col_created),
+    ] if real is None]
+
+    return {
+        "existing": existing,
+        "map": {
+            "cliente_id": col_cliente,
+            "game_name": col_game,
+            "provider_name": col_provider,
+            "gastos": col_gastos,
+            "ganhos": col_ganhos,
+            "created_at": col_created,
+        },
+        "missing": faltando
+    }
+
+res = _resolve_rounds_columns()
+if res["missing"]:
+    with st.expander("⚠️ Diagnóstico de colunas ausentes em rodadas_cliente"):
+        st.write("Colunas encontradas na tabela:", sorted(list(res["existing"])))
+        st.error(f"As colunas lógicas abaixo não foram mapeadas no banco: {', '.join(res['missing'])}")
+    st.stop()
+
+COLS = res["map"]
+
+# -- Builder SQL seguro (opção dividir por 100) --
+def _sql_rodadas_clientes(mode: str, divide_por_100: bool):
+    gastos_expr = f"r.`{COLS['gastos']}`/100.0" if divide_por_100 else f"r.`{COLS['gastos']}`"
+    ganhos_expr = f"r.`{COLS['ganhos']}`/100.0" if divide_por_100 else f"r.`{COLS['ganhos']}`"
+
+    ts_base = _build_ts_base_expr(COLS["created_at"])  # <-- usa helper que entende epoch
+    ts_expr = (
+        f"DATE_FORMAT(DATE_ADD({ts_base}, INTERVAL -3 HOUR), '%Y-%m-%d %H:%i:%s')"
+        if mode == "UTC" else
+        f"DATE_FORMAT({ts_base}, '%Y-%m-%d %H:%i:%s')"
+    )
+
+    return f"""
+        SELECT
+            r.`{COLS['cliente_id']}`    AS cliente_id,
+            r.`{COLS['game_name']}`     AS game_name,
+            r.`{COLS['provider_name']}` AS provider_name,
+            {gastos_expr} AS gastos,
+            {ganhos_expr} AS ganhos,
+            {ts_expr}     AS created_at_brt
+        FROM {tbl('rodadas_cliente')} r
+        WHERE
+            {ts_base} >= :start_ts
+            AND {ts_base} <  :end_ts
+        ORDER BY {ts_base} DESC
+        LIMIT 50000
+    """
+
+
+# -- UI: valores em centavos? --
+st.caption("Se *gastos/ganhos* estiverem em centavos, marque para dividir por 100.")
+dividir_por_100 = st.checkbox("↘️ Valores em centavos (dividir por 100)", value=False)
+
+# -- Dados: período ativo --
+with st.spinner("🔄 Carregando rodadas do período..."):
+    df_rodadas = fetch_df(_sql_rodadas_clientes(mode, dividir_por_100), params)
+
+
+# -- Dados: últimos 60 minutos (consulta + fallback de fuso) --
+_60_start_brt, _60_end_brt_inc = _last_minutes_bounds_brt(60)
+_60_start_ts, _60_end_ts = _to_mode_bounds(_60_start_brt, _60_end_brt_inc, mode)
+
+params60 = {"start_ts": fmt(_60_start_ts), "end_ts": fmt(_60_end_ts)}
+with st.spinner("⏱️ Carregando rodadas (últimos 60 minutos)..."):
+    df_rodadas_60 = fetch_df(_sql_rodadas_clientes(mode, dividir_por_100), params60)
+
+# Fallback: se veio vazio, tenta a interpretação oposta de fuso
+    df_rodadas_60_fb = None
+if (df_rodadas_60 is None or df_rodadas_60.empty):
+    if mode == "UTC":
+        # Tentar como se a coluna já estivesse em BRT (ou seja, sem converter para UTC na janela)
+        params60_fallback = {"start_ts": fmt(_60_start_brt), "end_ts": fmt(_60_end_brt_inc)}
+        df_rodadas_60_fb = fetch_df(_sql_rodadas_clientes("BRT", dividir_por_100), params60_fallback)
+    else:
+        # Tentar como se a coluna estivesse em UTC
+        fb_start_ts, fb_end_ts = utc_bounds_from_brt_bounds(_60_start_brt, _60_end_brt_inc)
+        params60_fallback = {"start_ts": fmt(fb_start_ts), "end_ts": fmt(fb_end_ts)}
+        df_rodadas_60_fb = fetch_df(_sql_rodadas_clientes("UTC", dividir_por_100), params60_fallback)
+
+    if df_rodadas_60_fb is not None and not df_rodadas_60_fb.empty:
+        st.info("ℹ️ Nenhum resultado na interpretação de fuso atual; resultados mostrados usando fallback de fuso.")
+        df_rodadas_60 = df_rodadas_60_fb
+# -- Sanitização --
+def _sanitize_rounds(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return df
+    keep = ["cliente_id","game_name","provider_name","gastos","ganhos","created_at_brt"]
+    df = df[[c for c in keep if c in df.columns]].copy()
+    for col in ["gastos","ganhos"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+    return df
+
+df_rodadas    = _sanitize_rounds(df_rodadas)
+df_rodadas_60 = _sanitize_rounds(df_rodadas_60)
+
+# -- Abas: Tabela geral + Métricas 60m --
+tab_tbl, tab_metrics = st.tabs(["📋 Tabela (período ativo)", "📊 Métricas – últimos 60 min"])
+
+with tab_tbl:
+    if df_rodadas is None or df_rodadas.empty:
+        st.info("ℹ️ Nenhuma rodada encontrada no período selecionado.")
+    else:
+        st.dataframe(
+            df_rodadas,
+            use_container_width=True,
+            height=480,
+            column_config={
+                "gastos": st.column_config.NumberColumn("Gastos (R$)", format="R$ %.2f"),
+                "ganhos": st.column_config.NumberColumn("Ganhos (R$)", format="R$ %.2f"),
+                "created_at_brt": "Data/Hora (BRT)",
+            }
+        )
+        create_download_button(df_rodadas, "📥 Exportar rodadas do período", "rodadas_periodo.csv")
+
+with tab_metrics:
+    st.caption(f"Janela analisada: **{fmt(_60_start_brt)} → {fmt(_60_end_brt_inc)}** (BRT)")
+
+    if df_rodadas_60 is None or df_rodadas_60.empty:
+        st.warning("Sem rodadas nos últimos 60 minutos.")
+    else:
+        # ---- Cálculos base (60m) ----
+        media_gastos = float(df_rodadas_60["gastos"].mean()) if "gastos" in df_rodadas_60 else 0.0
+        media_ganhos = float(df_rodadas_60["ganhos"].mean()) if "ganhos" in df_rodadas_60 else 0.0
+
+        # jogo mais jogado
+        jogo_mais_jogado, qtd_jogo_mais = "—", 0
+        if "game_name" in df_rodadas_60 and not df_rodadas_60["game_name"].isna().all():
+            vc = df_rodadas_60["game_name"].value_counts(dropna=True)
+            if not vc.empty:
+                jogo_mais_jogado = str(vc.index[0])
+                qtd_jogo_mais = int(vc.iloc[0])
+
+        # top clientes por ganhos e por nº de rodadas (60m)
+        top_ganhos_clientes = pd.DataFrame()
+        top_rodadas_clientes = pd.DataFrame()
+
+        if set(["cliente_id","ganhos"]).issubset(df_rodadas_60.columns):
+            top_ganhos_clientes = (df_rodadas_60.groupby("cliente_id", as_index=False)
+                                   .agg(ganhos_totais=("ganhos","sum"),
+                                        rodadas=("cliente_id","count"))
+                                   .sort_values("ganhos_totais", ascending=False)
+                                   .head(15))
+
+        if "cliente_id" in df_rodadas_60.columns:
+            top_rodadas_clientes = (df_rodadas_60.groupby("cliente_id", as_index=False)
+                                    .agg(rodadas=("cliente_id","count"),
+                                         ganhos_totais=("ganhos","sum") if "ganhos" in df_rodadas_60.columns else ("cliente_id","count"))
+                                    .sort_values("rodadas", ascending=False)
+                                    .head(15))
+
+        # destacar 1º lugar de cada ranking
+        best_ganhos_id, best_ganhos_val = "—", 0.0
+        if not top_ganhos_clientes.empty:
+            best_ganhos_id  = str(top_ganhos_clientes.iloc[0]["cliente_id"])
+            best_ganhos_val = float(top_ganhos_clientes.iloc[0]["ganhos_totais"])
+
+        best_rodadas_id, best_rodadas_qtd = "—", 0
+        if not top_rodadas_clientes.empty:
+            best_rodadas_id  = str(top_rodadas_clientes.iloc[0]["cliente_id"])
+            best_rodadas_qtd = int(top_rodadas_clientes.iloc[0]["rodadas"])
+
+        # ---- Cartões (mesmo estilo dos KPIs principais) ----
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">💳 Média Gastos (60m)</div>
+                    <div class="metric-value">{to_brl(media_gastos)}</div>
+                    <div class="metric-delta">Ticket médio de aposta</div>
+                </div>
+            ''', unsafe_allow_html=True)
+        with m2:
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">🏆 Média Ganhos (60m)</div>
+                    <div class="metric-value">{to_brl(media_ganhos)}</div>
+                    <div class="metric-delta">Retorno médio por rodada</div>
+                </div>
+            ''', unsafe_allow_html=True)
+        with m3:
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">🎯 Jogo mais jogado</div>
+                    <div class="metric-value">{jogo_mais_jogado}</div>
+                    <div class="metric-delta">Rodadas: {qtd_jogo_mais:,}</div>
+                </div>
+            ''', unsafe_allow_html=True)
+        with m4:
+            total_rodadas = int(len(df_rodadas_60))
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">⏱️ Rodadas (60m)</div>
+                    <div class="metric-value">{total_rodadas:,}</div>
+                    <div class="metric-delta">Volume recente</div>
+                </div>
+            ''', unsafe_allow_html=True)
+
+        # segunda linha de cartões: destaques por cliente
+        k1, k2 = st.columns(2)
+        with k1:
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">👑 Cliente com mais ganhos (60m)</div>
+                    <div class="metric-value">{best_ganhos_id}</div>
+                    <div class="metric-delta">Total: {to_brl(best_ganhos_val)}</div>
+                </div>
+            ''', unsafe_allow_html=True)
+        with k2:
+            st.markdown(f'''
+                <div class="metric-card">
+                    <div class="metric-title">🏃 Cliente com mais jogadas (60m)</div>
+                    <div class="metric-value">{best_rodadas_id}</div>
+                    <div class="metric-delta">Rodadas: {best_rodadas_qtd:,}</div>
+                </div>
+            ''', unsafe_allow_html=True)
+
+        # ---- Tabelas auxiliares ----
+        st.markdown("### 🥇 Top clientes por ganhos (60m)")
+        if top_ganhos_clientes.empty:
+            st.info("Sem clientes com ganhos nesta janela.")
+        else:
+            st.dataframe(
+                top_ganhos_clientes,
+                use_container_width=True,
+                height=380,
+                column_config={
+                    "ganhos_totais": st.column_config.NumberColumn("Ganhos Totais (R$)", format="R$ %.2f"),
+                    "rodadas": "Qtd. Rodadas"
+                }
+            )
+            create_download_button(top_ganhos_clientes, "📥 Exportar Top Ganhos (60m)", "top_ganhos_60m.csv")
+
+        st.markdown("### 🎮 Top clientes por número de jogadas (60m)")
+        if top_rodadas_clientes.empty:
+            st.info("Sem volume de jogadas nesta janela.")
+        else:
+            st.dataframe(
+                top_rodadas_clientes,
+                use_container_width=True,
+                height=380,
+                column_config={
+                    "rodadas": "Qtd. Rodadas",
+                    "ganhos_totais": st.column_config.NumberColumn("Ganhos Totais (R$)", format="R$ %.2f") if "ganhos_totais" in top_rodadas_clientes.columns else "Ganhos Totais"
+                }
+            )
+            create_download_button(top_rodadas_clientes, "📥 Exportar Top Jogadas (60m)", "top_jogadas_60m.csv")
