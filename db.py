@@ -5,15 +5,19 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from utils_secrets import get_secret
 
+# db.py
+from sqlalchemy import create_engine
+from utils_secrets import get_secret
+
 def get_engine():
     host = get_secret("DB_HOST")
     user = get_secret("DB_USER")
     pwd  = get_secret("DB_PASSWORD")
     db   = get_secret("DB_NAME")
+
+    # Se estiver usando MySQL
     url = f"mysql+pymysql://{user}:{pwd}@{host}/{db}"
     return create_engine(url, pool_pre_ping=True, pool_recycle=3600)
-
-    load_dotenv()
 
 def get_engine():
     host = os.getenv("DB_HOST")
