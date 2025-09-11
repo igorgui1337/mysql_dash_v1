@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 from plotly.subplots import make_subplots
 from sklearn.linear_model import LinearRegression
 from sqlalchemy import text
+import plotly.io as pio
+import plotly.graph_objects as go
 
 from db import get_engine
 
@@ -31,12 +33,44 @@ COLOR_SECONDARY = "#4A1A5C" # Purple variant
 COLOR_LIGHT = "#FEFCF5"     # Lighter background
 COLOR_DARK = "#1A0428"      # Darker text
 
+def enable_dark_chart_text():
+    template = go.layout.Template(
+        layout=go.Layout(
+            font=dict(color=COLOR_DARK, size=13),
+            title=dict(font=dict(color=COLOR_DARK, size=18)),
+            legend=dict(font=dict(color=COLOR_DARK)),
+            xaxis=dict(
+                tickfont=dict(color=COLOR_DARK),
+                
+                gridcolor="rgba(39,6,68,.18)",
+                linecolor="rgba(39,6,68,.28)",
+            ),
+            yaxis=dict(
+                tickfont=dict(color=COLOR_DARK),
+                
+                gridcolor="rgba(39,6,68,.18)",
+                linecolor="rgba(39,6,68,.28)",
+            ),
+            # 👇 Aqui estava o problema: use 'title' com 'font', não 'titlefont'
+            coloraxis=dict(
+                colorbar=dict(
+                    tickfont=dict(color=COLOR_DARK),
+                    title=dict(font=dict(color=COLOR_DARK))  # <- correto
+                )
+            ),
+        )
+    )
+    pio.templates["tropa_dark_text"] = template
+    pio.templates.default = "tropa_dark_text"
+
+enable_dark_chart_text()
 st.set_page_config(
     page_title="Start Dashboard - Monitoramento MySQL",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
 
 # ======= CSS (contraste + alinhamento calendário + botões claros) =======
 st.markdown(f"""
@@ -309,7 +343,7 @@ def sql_pagamentos_intervalo(mode: str):
     return f"""
         SELECT
             p.id,
-            p.amount/100.0 AS amount_corrigido,
+            p.amount/100 AS amount_corrigido,
             p.client_id AS id_do_cliente,
             p.operation_type AS operacao,
             p.callback_type AS finalizado,
@@ -330,10 +364,10 @@ def sql_resumo_por_dia(mode: str):
     return f"""
         SELECT
             {grp_date} AS data_brt,
-            SUM(CASE WHEN p.operation_type LIKE 'depos%%'  THEN p.amount/100.0 ELSE 0 END) AS total_depositos,
-            SUM(CASE WHEN p.operation_type LIKE 'withdr%%' THEN p.amount/100.0 ELSE 0 END) AS total_saques,
-            SUM(CASE WHEN p.operation_type LIKE 'depos%%'  THEN p.amount/100.0 ELSE 0 END)
-          - SUM(CASE WHEN p.operation_type LIKE 'withdr%%' THEN p.amount/100.0 ELSE 0 END) AS net_deposit
+            SUM(CASE WHEN p.operation_type LIKE 'depos%%'  THEN p.amount/100 ELSE 0 END) AS total_depositos,
+            SUM(CASE WHEN p.operation_type LIKE 'withdr%%' THEN p.amount/100 ELSE 0 END) AS total_saques,
+            SUM(CASE WHEN p.operation_type LIKE 'depos%%'  THEN p.amount/100 ELSE 0 END)
+          - SUM(CASE WHEN p.operation_type LIKE 'withdr%%' THEN p.amount/100 ELSE 0 END) AS net_deposit
         FROM {tbl('payment')} p
         WHERE
             p.processing_status = 'COMPLETED'
@@ -352,8 +386,8 @@ def sql_resumo_por_hora(mode: str):
         SELECT
             {grp_date} AS data_brt,
             {grp_hour} AS hora_brt,
-            SUM(CASE WHEN p.operation_type LIKE 'depos%%'  THEN p.amount/100.0 ELSE 0 END) AS deposito_h,
-            SUM(CASE WHEN p.operation_type LIKE 'withdr%%' THEN p.amount/100.0 ELSE 0 END) AS saque_h
+            SUM(CASE WHEN p.operation_type LIKE 'depos%%'  THEN p.amount/100 ELSE 0 END) AS deposito_h,
+            SUM(CASE WHEN p.operation_type LIKE 'withdr%%' THEN p.amount/100 ELSE 0 END) AS saque_h
         FROM {tbl('payment')} p
         WHERE
             p.processing_status = 'COMPLETED'
@@ -370,7 +404,7 @@ def sql_top_ids_valor(mode: str, tipo: str):
     return f"""
         SELECT
             p.client_id AS id_do_cliente,
-            SUM(p.amount/100.0) AS total_valor,
+            SUM(p.amount/100) AS total_valor,
             COUNT(*) AS qtd_ops
         FROM {tbl('payment')} p
         WHERE
@@ -391,7 +425,7 @@ def sql_top_ids_qtd(mode: str, tipo: str):
         SELECT
             p.client_id AS id_do_cliente,
             COUNT(*) AS qtd_ops,
-            SUM(p.amount/100.0) AS total_valor
+            SUM(p.amount/100) AS total_valor
         FROM {tbl('payment')} p
         WHERE
             p.processing_status = 'COMPLETED'
@@ -412,7 +446,7 @@ def sql_top30_saques_diarios(mode: str):
             SELECT
                 p.client_id,
                 {data_expr} AS data_brt,
-                p.amount/100.0 AS valor_saque
+                p.amount/100 AS valor_saque
             FROM {tbl('payment')} p
             WHERE
                 p.processing_status = 'COMPLETED'
@@ -601,8 +635,8 @@ else:
         work["t"] = np.arange(len(work), dtype=float)
         out = {}
         for col in ["total_depositos", "total_saques"]:
-            y = work[col].values.reshape(-1, 1)
-            X = work["t"].values.reshape(-1, 1)
+            y = work[col].to_numpy(dtype=np.float64).reshape(-1, 1)
+            X = work["t"].to_numpy(dtype=np.float64).reshape(-1, 1)
             # segurança: precisa ter variação e pelo menos 3 pontos
             if len(work) < 3 or np.allclose(y, y.mean()):
                 out[col] = None
@@ -767,7 +801,10 @@ else:
             fig3.update_layout(
                 title="🔥 Heatmap - Depósitos por Hora", xaxis_title="Hora do Dia", yaxis_title="Data",
                 paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG, font=dict(color=COLOR_TEXT), height=400,
-            )
+                 coloraxis_colorbar=dict(
+        tickfont=dict(color=COLOR_DARK),
+        title=dict(text="", font=dict(color=COLOR_DARK))
+            ))
             st.plotly_chart(fig3, use_container_width=True)
     create_download_button(df_hour, "📥 Dados Horários", "agregado_horario.csv")
 
@@ -1022,8 +1059,8 @@ COLS = res["map"]
 
 # -- Builder SQL seguro (opção dividir por 100) --
 def _sql_rodadas_clientes(mode: str, divide_por_100: bool):
-    gastos_expr = f"r.`{COLS['gastos']}`/100.0" if divide_por_100 else f"r.`{COLS['gastos']}`"
-    ganhos_expr = f"r.`{COLS['ganhos']}`/100.0" if divide_por_100 else f"r.`{COLS['ganhos']}`"
+    gastos_expr = f"r.`{COLS['gastos']}`/100" if divide_por_100 else f"r.`{COLS['gastos']}`"
+    ganhos_expr = f"r.`{COLS['ganhos']}`/100" if divide_por_100 else f"r.`{COLS['ganhos']}`"
 
     ts_base = _build_ts_base_expr(COLS["created_at"])  # <-- usa helper que entende epoch
     ts_expr = (
