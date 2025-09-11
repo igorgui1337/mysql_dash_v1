@@ -1,0 +1,9 @@
+streamlit>=1.37
+pandas>=2.2
+numpy>=1.26
+plotly>=5.22
+SQLAlchemy>=2.0
+PyMySQL>=1.1          # driver MySQL (use este se URL for mysql+pymysql://)
+python-dotenv>=1.0    # opcional; útil no dev local
+scikit-learn>=1.5     # projeções ML
+python-dateutil>=2.9

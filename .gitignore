@@ -1,0 +1,14 @@
+# ====================================
+# Git Ignore - Projeto Python/Streamlit
+# ====================================
+
+# Arquivos de ambiente / credenciais
+.env
+*.key
+*.pem
+
+
+
+# ====================================
+# Fim do .gitignore
+# ====================================
