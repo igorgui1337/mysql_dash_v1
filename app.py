@@ -1,4 +1,4 @@
-# app.py  (v5 – Legibilidade + Calendário Inline + TZ-safe SQL)
+# app.py  (v5 – Legibilidade + Calendário Inline + TZ-safe SQL) — versão com áreas isoladas
 import os
 import base64
 from datetime import datetime, date, time, timedelta, timezone
@@ -41,21 +41,18 @@ def enable_dark_chart_text():
             legend=dict(font=dict(color=COLOR_DARK)),
             xaxis=dict(
                 tickfont=dict(color=COLOR_DARK),
-                
                 gridcolor="rgba(39,6,68,.18)",
                 linecolor="rgba(39,6,68,.28)",
             ),
             yaxis=dict(
                 tickfont=dict(color=COLOR_DARK),
-                
                 gridcolor="rgba(39,6,68,.18)",
                 linecolor="rgba(39,6,68,.28)",
             ),
-            # 👇 Aqui estava o problema: use 'title' com 'font', não 'titlefont'
             coloraxis=dict(
                 colorbar=dict(
                     tickfont=dict(color=COLOR_DARK),
-                    title=dict(font=dict(color=COLOR_DARK))  # <- correto
+                    title=dict(font=dict(color=COLOR_DARK))
                 )
             ),
         )
@@ -70,7 +67,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
 
 # ======= CSS (contraste + alinhamento calendário + botões claros) =======
 st.markdown(f"""
@@ -89,10 +85,8 @@ st.markdown(f"""
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }}
-    /* Sidebar */
     .css-1d391kg, .css-1lcbmhc {{ background-color: var(--card) !important; }}
 
-    /* Header */
     .main-header {{
         background: linear-gradient(135deg, var(--text) 0%, var(--secondary) 100%);
         padding: 20px; border-radius: 15px; margin-bottom: 20px;
@@ -103,15 +97,11 @@ st.markdown(f"""
         margin: 0; text-shadow: 0 1px 2px rgba(0,0,0,.25);
     }}
     .subtitle {{ color: var(--card); opacity: .95; font-size: 15px; margin-top: 6px; font-weight: 600; }}
-
-    /* Seções */
     .section-header {{
         background: var(--card); padding: 14px 16px; border-radius: 12px; margin: 22px 0 12px 0;
         border-left: 5px solid var(--accent); box-shadow: 0 1px 8px rgba(39,6,68,.08);
     }}
     .section-title {{ color: var(--text-dark); font-size: 19px; font-weight: 900; margin: 0; letter-spacing: .2px; }}
-
-    /* Cards de métricas */
     .metric-card {{
         background: var(--card); padding: 18px 16px; border-radius: 14px; margin-bottom: 14px;
         border-left: 5px solid var(--accent); box-shadow: 0 2px 12px rgba(39,6,68,.10);
@@ -122,29 +112,19 @@ st.markdown(f"""
     }}
     .metric-value {{ color: var(--text); font-size: 26px; font-weight: 900; line-height: 1.15; margin-bottom: 4px; }}
     .metric-delta {{ color: var(--accent); font-size: 12.5px; font-weight: 700; letter-spacing: .2px; }}
-
-    /* DataFrame */
     .stDataFrame, .stTable {{ border-radius: 10px !important; overflow: hidden;
         box-shadow: 0 2px 12px rgba(39,6,68,.10); }}
     .stDataFrame thead th {{ color: var(--text-dark) !important; font-weight: 900 !important; font-size: 13px !important; }}
     .stDataFrame tbody td {{ color: var(--text) !important; font-weight: 600 !important; font-size: 12.5px !important; }}
-
-    /* Info boxes */
     .stInfo, .stWarning, .stSuccess {{ background-color: var(--card) !important; color: var(--text) !important;
         border-left: 5px solid var(--accent) !important; }}
-
-    /* Logo */
     .logo-container {{ text-align: center; margin-bottom: 18px; padding: 8px; }}
-
-    /* ===== Calendário inline alinhado ===== */
     .inline-row {{ margin-top: -6px; }}
     .inline-card {{
         background: var(--card); border-left: 5px solid var(--accent); border-radius: 12px;
         padding: 10px 12px; box-shadow: 0 1px 8px rgba(39,6,68,.08);
     }}
     .inline-card .stDateInput label {{ display: none !important; }}
-
-    /* Botões do formulário (claros/acessíveis) */
     .stForm button[kind="primary"] {{
         background-color: var(--accent) !important; color: var(--text-dark) !important; border: none !important;
         border-radius: 10px !important; font-weight: 800 !important;
@@ -160,17 +140,16 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 st.markdown(f"""
     <style>
-    /* Tabs do Streamlit */
     .stTabs [role="tab"] {{
-        color: {COLOR_TEXT} !important; /* cor mais escura */
+        color: {COLOR_TEXT} !important;
         font-weight: 700 !important;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.25); /* sombra leve */
+        text-shadow: 0 1px 2px rgba(0,0,0,0.25);
     }}
     .stTabs [role="tab"][aria-selected="true"] {{
-        color: {COLOR_DARK} !important; /* ainda mais escuro quando ativo */
+        color: {COLOR_DARK} !important;
         font-weight: 800 !important;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.35); /* sombra mais forte */
-        border-bottom: 3px solid {COLOR_ACCENT} !important; /* destaque */
+        text-shadow: 0 2px 4px rgba(0,0,0,0.35);
+        border-bottom: 3px solid {COLOR_ACCENT} !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -228,7 +207,6 @@ if "inline_end" not in st.session_state:
 if "inline_use" not in st.session_state:
     st.session_state["inline_use"] = False
 
-
 # ======= Sidebar =======
 with st.sidebar:
     st.markdown(f'''
@@ -237,10 +215,10 @@ with st.sidebar:
         </div>
     ''', unsafe_allow_html=True)
 
-    # 🔀 NOVO: seletor de área
+    # 🔀 seletor de área
     area = st.selectbox("🔀 Área de análise", ["NetDepósito", "Cassino"])
 
-    # 🔒 Fixar timezone em BRT (sem opção de UTC)
+    # 🔒 TZ fixo BRT
     mode = "BRT"
 
     st.markdown("---")
@@ -251,7 +229,7 @@ with st.sidebar:
         help="Selecione o período para análise"
     )
 
-    # Período base vindo do rádio
+    # Período base do rádio
     if quick == "Hoje":
         start_brt, end_brt_inclusive = brt_bounds_for_days(1)
     elif quick == "Últimos 7 dias":
@@ -277,17 +255,16 @@ with st.sidebar:
             d1, d2 = d2, d1
         start_brt = datetime.combine(d1, time(0, 0)).replace(tzinfo=TZ_BRT)
         end_brt_inclusive = datetime.combine(d2, time(23, 59, 59)).replace(tzinfo=TZ_BRT) + timedelta(seconds=1)
-        # opção para limpar inline
         if st.button("Limpar período inline"):
             st.session_state["inline_use"] = False
             st.rerun()
 
-    # Como o modo é fixo em BRT, não há conversão aqui
+    # Como o modo é BRT, não converte aqui
     start_ts, end_ts = start_brt, end_brt_inclusive
 
     st.markdown("---")
 
-    # 🔎 Filtro por Client ID (específico p/ NetDepósito)
+    # Filtros específicos de NetDepósito
     client_filter = st.text_input("🔍 Client ID (NetDepósito)", value="", placeholder="Filtrar por ID…")
     op_filter = st.selectbox("💰 Operação (NetDepósito)", ["Todos", "Depósitos", "Saques"])
 
@@ -308,7 +285,6 @@ with st.sidebar:
                 st.write(pd.read_sql(text(q), conn))
 
 params = {"start_ts": fmt(start_ts), "end_ts": fmt(end_ts)}
-
 
 # ======= Helpers =======
 @st.cache_data(show_spinner=False, ttl=60)
@@ -331,7 +307,7 @@ def create_download_button(df: pd.DataFrame, label: str, fname: str):
 def to_brl(x: float) -> str:
     return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-# ======= SQL Builders (TZ-safe: evita CONVERT_TZ quando modo=UTC) =======
+# ======= SQL Builders (Pagamentos / NetDepósito) =======
 def tbl(name: str):
     return f"`{db_name}`.{name}" if db_name else name
 
@@ -475,445 +451,7 @@ def sql_top30_saques_diarios(mode: str):
         LIMIT 30
     """
 
-# ======= Coleta =======
-with st.spinner("🔄 Carregando dados..."):
-    df_list = fetch_df(sql_pagamentos_intervalo(mode), params)
-    df_day  = fetch_df(sql_resumo_por_dia(mode), params)
-    df_hour = fetch_df(sql_resumo_por_hora(mode), params)
-    df_top30_saques_dia = fetch_df(sql_top30_saques_diarios(mode), params)
-    df_top_val_saques   = fetch_df(sql_top_ids_valor(mode, "saque"), params)
-    df_top_qtd_saques   = fetch_df(sql_top_ids_qtd(mode, "saque"), params)
-    df_top_val_deps     = fetch_df(sql_top_ids_valor(mode, "deposito"), params)
-    df_top_qtd_deps     = fetch_df(sql_top_ids_qtd(mode, "deposito"), params)
-
-# ======= Sanitização/Filtros =======
-if not df_list.empty:
-    df_list["amount_corrigido"] = pd.to_numeric(df_list["amount_corrigido"], errors="coerce").fillna(0.0)
-    df_list["operacao"] = df_list["operacao"].astype(str)
-    df_list["id_do_cliente"] = df_list["id_do_cliente"].astype(str)
-    if client_filter:
-        df_list = df_list[df_list["id_do_cliente"].str.contains(client_filter, case=False, na=False)]
-    ops_lower = df_list["operacao"].str.lower()
-    if op_filter == "Depósitos":
-        df_list = df_list[ops_lower.str.startswith("depos", na=False) | ops_lower.str.contains("deposit", na=False)]
-    elif op_filter == "Saques":
-        df_list = df_list[ops_lower.str.startswith("withdr", na=False) | ops_lower.str.contains("withdraw", na=False)]
-
-if not df_day.empty:
-    df_day["data_brt"] = pd.to_datetime(df_day["data_brt"], errors="coerce")
-    df_day["total_depositos"] = pd.to_numeric(df_day["total_depositos"], errors="coerce").fillna(0.0)
-    df_day["total_saques"]    = pd.to_numeric(df_day["total_saques"],    errors="coerce").fillna(0.0)
-    df_day = df_day[df_day["data_brt"].notna()]
-    df_day = (df_day.groupby("data_brt", as_index=False)
-              .agg(total_depositos=("total_depositos","sum"),
-                   total_saques=("total_saques","sum"))
-              .sort_values("data_brt").reset_index(drop=True))
-
-if not df_hour.empty:
-    df_hour["data_brt"]  = pd.to_datetime(df_hour["data_brt"], errors="coerce")
-    df_hour = df_hour[df_hour["data_brt"].notna()]
-    df_hour["hora_brt"]  = pd.to_numeric(df_hour["hora_brt"], errors="coerce").fillna(0).astype(int).clip(0, 23)
-    df_hour["deposito_h"] = pd.to_numeric(df_hour["deposito_h"], errors="coerce").fillna(0.0)
-    df_hour["saque_h"]    = pd.to_numeric(df_hour["saque_h"],    errors="coerce").fillna(0.0)
-    df_hour["hora_ts"] = df_hour["data_brt"] + pd.to_timedelta(df_hour["hora_brt"], unit="h")
-
-# ======= KPIs + Calendário Inline (alinhado) =======
-def safe_sum(series):
-    return float(series.fillna(0).sum()) if series is not None else 0.0
-
-if not df_list.empty:
-    ops_lower = df_list["operacao"].str.lower()
-    is_dep = ops_lower.str.startswith("depos", na=False) | ops_lower.str.contains("deposit", na=False)
-    is_wdr = ops_lower.str.startswith("withdr", na=False) | ops_lower.str.contains("withdraw", na=False)
-    total_deps = safe_sum(df_list.loc[is_dep, "amount_corrigido"])
-    total_saques = safe_sum(df_list.loc[is_wdr, "amount_corrigido"])
-    total_transactions = int(len(df_list))
-    avg_transaction = (total_deps + total_saques) / total_transactions if total_transactions > 0 else 0.0
-else:
-    total_deps = total_saques = avg_transaction = 0.0
-    total_transactions = 0
-
-net = total_deps - total_saques
-
-left, right = st.columns([3, 3])
-if area == "NetDepósito":
-    with left:
-        st.markdown(f'''
-        <div class="section-header inline-row">
-            <div class="section-title">📊 Métricas Principais</div>
-        </div>
-    ''', unsafe_allow_html=True)
-with right:
-    with st.form("inline_date_form", clear_on_submit=False):
-        st.markdown('<div class="inline-card">', unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns([1.2, 1.2, 0.9, 0.9])
-        with c1:
-            start_pick = st.date_input("Início", value=date.today(), key="inline_start_picker", label_visibility="collapsed")
-        with c2:
-            end_pick = st.date_input("Fim", value=st.session_state.get("inline_end", date.today()), key="inline_end_picker", label_visibility="collapsed")
-        with c3:
-            apply_inline = st.form_submit_button("Aplicar", type="primary", use_container_width=True)
-        with c4:
-            clear_inline = st.form_submit_button("Limpar", type="secondary", use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        if apply_inline:
-            st.session_state["inline_start"] = start_pick
-            st.session_state["inline_end"] = end_pick
-            st.session_state["inline_use"] = True
-            st.rerun()
-        if clear_inline:
-            st.session_state["inline_use"] = False
-            st.rerun()
-
-# Cards
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    st.markdown(f'''
-        <div class="metric-card">
-            <div class="metric-title">💰 Total Depósitos</div>
-            <div class="metric-value">{to_brl(total_deps)}</div>
-            <div class="metric-delta">↗️ Entrada de capital</div>
-        </div>
-    ''', unsafe_allow_html=True)
-with c2:
-    st.markdown(f'''
-        <div class="metric-card">
-            <div class="metric-title">💸 Total Saques</div>
-            <div class="metric-value">{to_brl(total_saques)}</div>
-            <div class="metric-delta">↙️ Saída de capital</div>
-        </div>
-    ''', unsafe_allow_html=True)
-with c3:
-    delta_color = COLOR_ACCENT if net >= 0 else "#E74C3C"
-    net_icon = "📈" if net >= 0 else "📉"
-    st.markdown(f'''
-        <div class="metric-card">
-            <div class="metric-title">⚖️ Saldo Líquido</div>
-            <div class="metric-value" style="color: {delta_color};">{to_brl(net)}</div>
-            <div class="metric-delta">{net_icon} {"Positivo" if net >= 0 else "Negativo"}</div>
-        </div>
-    ''', unsafe_allow_html=True)
-with c4:
-    st.markdown(f'''
-        <div class="metric-card">
-            <div class="metric-title">🔢 Transações</div>
-            <div class="metric-value">{total_transactions:,}</div>
-            <div class="metric-delta">💳 Ticket médio: {to_brl(avg_transaction)}</div>
-        </div>
-    ''', unsafe_allow_html=True)
-
-st.write("")
-create_download_button(df_list, "📥 Exportar Lista Completa", "lista_pagamentos.csv")
-
-# ======= Evolução diária =======
-st.markdown(f'''
-    <div class="section-header">
-        <div class="section-title">📈 Evolução Temporal</div>
-    </div>
-''', unsafe_allow_html=True)
-
-if df_day.empty:
-    st.info("ℹ️ Sem dados disponíveis no período selecionado.")
-else:
-    df_day_plot = df_day.sort_values("data_brt").copy()
-
-    # --- helper para projeção diária ---
-    def fit_and_forecast_daily(df_day_in: pd.DataFrame, horizon_days: int = 7):
-        if df_day_in is None or df_day_in.empty:
-            return None
-        work = df_day_in.copy().sort_values("data_brt").reset_index(drop=True)
-
-        # garante sequência diária contínua
-        full_idx = pd.date_range(work["data_brt"].min(), work["data_brt"].max(), freq="D")
-        work = work.set_index("data_brt").reindex(full_idx)
-        work.index.name = "data_brt"
-        for col in ["total_depositos", "total_saques"]:
-            work[col] = pd.to_numeric(work[col], errors="coerce").fillna(0.0)
-        work = work.reset_index().rename(columns={"index": "data_brt"})
-
-        work["t"] = np.arange(len(work), dtype=float)
-        out = {}
-        for col in ["total_depositos", "total_saques"]:
-            y = work[col].to_numpy(dtype=np.float64).reshape(-1, 1)
-            X = work["t"].to_numpy(dtype=np.float64).reshape(-1, 1)
-            # segurança: precisa ter variação e pelo menos 3 pontos
-            if len(work) < 3 or np.allclose(y, y.mean()):
-                out[col] = None
-                continue
-            model = LinearRegression().fit(X, y)
-            max_t = work["t"].max()
-            h = max(horizon_days, 1)
-            t_future = np.arange(max_t + 1, max_t + 1 + h).reshape(-1, 1)
-            y_pred = model.predict(t_future).ravel()
-            future_dates = pd.date_range(work["data_brt"].max() + pd.Timedelta(days=1), periods=h, freq="D")
-            out[col] = pd.DataFrame({
-                "data_brt": future_dates,
-                f"{col}_pred": np.clip(y_pred, 0, None)
-            })
-
-        if out["total_depositos"] is None and out["total_saques"] is None:
-            return None
-
-        df_fut = None
-        for piece in [out["total_depositos"], out["total_saques"]]:
-            if piece is None:
-                continue
-            df_fut = piece if df_fut is None else df_fut.merge(piece, on="data_brt", how="outer")
-        return df_fut
-
-    # --- abas: período, últimos 7d e ML ---
-    tab_all, tab_7d, tab_ml = st.tabs(["📊 Período selecionado", "📆 Últimos 7 dias", "🔮 Projeção (ML)"])
-
-    # Período selecionado (o que vier da barra lateral/inline)
-    with tab_all:
-        fig_all = go.Figure()
-        fig_all.add_trace(go.Bar(
-            x=df_day_plot["data_brt"], y=df_day_plot["total_depositos"],
-            name="Depósitos", marker_color=COLOR_ACCENT, opacity=0.85
-        ))
-        fig_all.add_trace(go.Bar(
-            x=df_day_plot["data_brt"], y=df_day_plot["total_saques"],
-            name="Saques", marker_color=COLOR_TEXT, opacity=0.85
-        ))
-        fig_all.update_layout(
-            barmode="group", height=420, paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG,
-            font=dict(color=COLOR_TEXT), title="Evolução Diária (Período Selecionado)",
-            yaxis_title="Valor (R$)", yaxis_tickformat="R$ ,.0f"
-        )
-        st.plotly_chart(fig_all, use_container_width=True)
-        create_download_button(df_day_plot, "📥 Baixar dados do período", "agregado_diario_periodo.csv")
-
-    # Últimos 7 dias (sempre pega os 7 mais recentes disponíveis)
-    with tab_7d:
-        if not df_day_plot.empty:
-            last_date = df_day_plot["data_brt"].max()
-            start_7d = (last_date - pd.Timedelta(days=6)).normalize()
-            df_7d = df_day_plot[df_day_plot["data_brt"] >= start_7d].copy()
-
-            # garante exatamente janela 7d mesmo se faltar dia
-            full_idx = pd.date_range(start_7d.normalize(), last_date.normalize(), freq="D")
-            df_7d = (
-                df_7d.set_index("data_brt")
-                     .reindex(full_idx)
-                     .rename_axis("data_brt")
-                     .fillna({"total_depositos": 0.0, "total_saques": 0.0})
-                     .reset_index()
-            )
-
-            fig_7d = go.Figure()
-            fig_7d.add_trace(go.Bar(
-                x=df_7d["data_brt"], y=df_7d["total_depositos"],
-                name="Depósitos (dia)", marker_color=COLOR_ACCENT, opacity=0.9
-            ))
-            fig_7d.add_trace(go.Bar(
-                x=df_7d["data_brt"], y=df_7d["total_saques"],
-                name="Saques (dia)", marker_color=COLOR_TEXT, opacity=0.9
-            ))
-            fig_7d.update_layout(
-                barmode="group", height=420, paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG,
-                font=dict(color=COLOR_TEXT), title="Evolução Diária – Últimos 7 Dias",
-                yaxis_title="Valor (R$)", yaxis_tickformat="R$ ,.0f"
-            )
-            st.plotly_chart(fig_7d, use_container_width=True)
-            create_download_button(df_7d, "📥 Baixar últimos 7 dias", "agregado_diario_7d.csv")
-        else:
-            st.info("Sem dados para compor a janela de 7 dias.")
-
-    # Projeção (ML) sobre a série diária
-    with tab_ml:
-        df_forecast = fit_and_forecast_daily(df_day_plot, horizon_days=7)
-        if df_forecast is None or df_forecast.empty:
-            st.info("Sem dados suficientes para projetar.")
-        else:
-            fig_ml = go.Figure()
-            # histórico
-            fig_ml.add_trace(go.Scatter(
-                x=df_day_plot["data_brt"], y=df_day_plot["total_depositos"],
-                mode="lines+markers", name="Depósitos (histórico)", line=dict(width=3)
-            ))
-            fig_ml.add_trace(go.Scatter(
-                x=df_day_plot["data_brt"], y=df_day_plot["total_saques"],
-                mode="lines+markers", name="Saques (histórico)", line=dict(width=3)
-            ))
-            # projeções
-            if "total_depositos_pred" in df_forecast.columns:
-                fig_ml.add_trace(go.Scatter(
-                    x=df_forecast["data_brt"], y=df_forecast["total_depositos_pred"],
-                    mode="lines+markers", name="Projeção Depósitos (7d)", line=dict(dash="dash", width=3)
-                ))
-            if "total_saques_pred" in df_forecast.columns:
-                fig_ml.add_trace(go.Scatter(
-                    x=df_forecast["data_brt"], y=df_forecast["total_saques_pred"],
-                    mode="lines+markers", name="Projeção Saques (7d)", line=dict(dash="dash", width=3)
-                ))
-            fig_ml.update_layout(
-                height=420, paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG,
-                font=dict(color=COLOR_TEXT), title="Projeção (Linear) – Próximos 7 Dias",
-                yaxis_title="Valor (R$)", yaxis_tickformat="R$ ,.0f"
-            )
-            st.plotly_chart(fig_ml, use_container_width=True)
-            create_download_button(df_forecast, "🔮 Baixar projeções (7d)", "projecoes_ml_7d.csv")
-# ======= /Evolução diária =======
-
-
-# ======= Análise Horária =======
-st.markdown(f'''
-    <div class="section-header">
-        <div class="section-title">⏰ Análise Horária</div>
-    </div>
-''', unsafe_allow_html=True)
-
-if df_hour.empty:
-    st.info("ℹ️ Sem dados horários disponíveis.")
-else:
-    df_hour_pivot = df_hour.pivot_table(
-        index=df_hour["data_brt"].dt.date,
-        columns="hora_brt",
-        values=["deposito_h", "saque_h"],
-        aggfunc="sum",
-        fill_value=0,
-    )
-    tab1, tab2 = st.tabs(["📈 Evolução Horária", "🔥 Heatmap de Atividade"])
-    with tab1:
-        ordered = df_hour.sort_values("hora_ts")
-        fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=ordered["hora_ts"], y=ordered["deposito_h"],
-                                  mode="lines+markers", name="Depósitos",
-                                  line=dict(color=COLOR_ACCENT, width=3), marker=dict(size=6, color=COLOR_ACCENT)))
-        fig2.add_trace(go.Scatter(x=ordered["hora_ts"], y=ordered["saque_h"],
-                                  mode="lines+markers", name="Saques",
-                                  line=dict(color=COLOR_TEXT, width=3), marker=dict(size=6, color=COLOR_TEXT)))
-        fig2.update_layout(
-            title="Atividade Financeira por Hora", paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG,
-            font=dict(color=COLOR_TEXT), xaxis_title="Data e Hora", yaxis_title="Valor (R$)",
-            yaxis_tickformat="R$ ,.0f", height=400,
-        )
-        st.plotly_chart(fig2, use_container_width=True)
-    with tab2:
-        if not df_hour_pivot.empty:
-            depositos_data = df_hour_pivot["deposito_h"].fillna(0).values
-            fig3 = go.Figure(data=go.Heatmap(
-                z=depositos_data, x=list(range(24)), y=[str(d) for d in df_hour_pivot.index],
-                colorscale=[[0, COLOR_BG], [1, COLOR_ACCENT]], showscale=True,
-                hovertemplate='Data: %{y}<br>Hora: %{x}:00<br>Depósitos: R$ %{z:,.2f}<extra></extra>'
-            ))
-            fig3.update_layout(
-                title="🔥 Heatmap - Depósitos por Hora", xaxis_title="Hora do Dia", yaxis_title="Data",
-                paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG, font=dict(color=COLOR_TEXT), height=400,
-                 coloraxis_colorbar=dict(
-        tickfont=dict(color=COLOR_DARK),
-        title=dict(text="", font=dict(color=COLOR_DARK))
-            ))
-            st.plotly_chart(fig3, use_container_width=True)
-    create_download_button(df_hour, "📥 Dados Horários", "agregado_horario.csv")
-
-# ======= Rankings =======
-st.markdown(f'''
-    <div class="section-header">
-        <div class="section-title">🏆 Rankings e Top Performers</div>
-    </div>
-''', unsafe_allow_html=True)
-
-st.markdown("### 🥇 Top 30 - Maior Atividade de Saques por Dia")
-if not df_top30_saques_dia.empty:
-    # garante IDs completos como texto
-    df_top30 = df_top30_saques_dia.copy()
-    df_top30["id_do_cliente"] = df_top30["id_do_cliente"].astype(str)
-
-    # ordena por valor e mantém 15 (horizontal melhor para IDs longos)
-    df_top30 = df_top30.sort_values("total_sacado", ascending=True).head(15)
-
-    # usa qtd_saques como cor (escala na paleta da app)
-    fig_top = px.bar(
-        df_top30,
-        x="total_sacado",
-        y="id_do_cliente",
-        orientation="h",
-        color="qtd_saques",
-        color_continuous_scale=[
-            [0.0, COLOR_BG],
-            [0.5, "#BFF288"],  # tom intermediário legível
-            [1.0, COLOR_ACCENT]
-        ],
-        labels={
-            "total_sacado": "Total Sacado (R$)",
-            "id_do_cliente": "Cliente (ID)",
-            "qtd_saques": "Qtd. saques"
-        },
-        height=440,  # deixe menor se preferir (ex.: 380)
-    )
-
-    # eixos/estilo – impede abreviação dos IDs e melhora contraste
-    fig_top.update_yaxes(
-        type="category",
-        categoryorder="array",
-        categoryarray=df_top30["id_do_cliente"].tolist(),
-        tickfont=dict(size=11, color=COLOR_TEXT)
-    )
-    fig_top.update_xaxes(
-        tickformat="R$ ,.0f",
-        gridcolor="rgba(39,6,68,.15)"
-    )
-    fig_top.update_layout(
-        paper_bgcolor=COLOR_LIGHT,
-        plot_bgcolor=COLOR_BG,
-        font=dict(color=COLOR_TEXT),
-        margin=dict(l=150, r=40, t=50, b=40),  # espaço p/ IDs longos
-        coloraxis_colorbar=dict(title="Qtd saques")
-    )
-
-    # rótulos de valor (R$) e hover com ID completo + qtd_saques
-    fig_top.update_traces(
-        customdata=df_top30[["qtd_saques"]],
-        hovertemplate="ID: %{y}<br>Total: R$ %{x:,.2f}<br>Qtd saques: %{customdata[0]}<extra></extra>",
-        text=df_top30["total_sacado"].map(to_brl),
-        textposition="outside",
-        cliponaxis=False
-    )
-
-    col_chart, col_table = st.columns([2, 1])
-    with col_chart:
-        st.plotly_chart(fig_top, use_container_width=True)
-    with col_table:
-        st.dataframe(
-            df_top30_saques_dia,
-            use_container_width=True,
-            height=500,
-            column_config={"total_sacado": st.column_config.NumberColumn("Total Sacado (R$)", format="R$ %.2f")},
-        )
-    create_download_button(df_top30_saques_dia, "📥 Baixar Top 30 Saques/Dia", "top30_saques_dia.csv")
-else:
-    st.info("Sem registros para Top 30 no período.")
-
-
-c1, c2 = st.columns(2)
-with c1:
-    st.markdown("### 💸 Top Valor – Saques")
-    st.dataframe(df_top_val_saques, use_container_width=True)
-    create_download_button(df_top_val_saques, "📥 Baixar Top Valor Saques", "top_val_saques.csv")
-    st.markdown("### 🧮 Top Qtd – Saques")
-    st.dataframe(df_top_qtd_saques, use_container_width=True)
-    create_download_button(df_top_qtd_saques, "📥 Baixar Top Qtd Saques", "top_qtd_saques.csv")
-with c2:
-    st.markdown("### 💰 Top Valor – Depósitos")
-    st.dataframe(df_top_val_deps, use_container_width=True)
-    create_download_button(df_top_val_deps, "📥 Baixar Top Valor Depósitos", "top_val_depositos.csv")
-    st.markdown("### 🧮 Top Qtd – Depósitos")
-    st.dataframe(df_top_qtd_deps, use_container_width=True)
-    create_download_button(df_top_qtd_deps, "📥 Baixar Top Qtd Depósitos", "top_qtd_depositos.csv")
-# =========================
-# 🎮 Rodadas por Cliente (auto-resolve colunas)
-# =========================
-if area == "Cassino":
-
-    st.markdown(f'''
-    <div class="section-header">
-        <div class="section-title">🎮 Rodadas por Cliente</div>
-    </div>
-''', unsafe_allow_html=True)
-
-# -- Utils: últimos 60 minutos em BRT --
+# ======= Builders / Utils (Cassino) =======
 def _last_minutes_bounds_brt(minutes: int = 60):
     now_brt = datetime.now(TZ_BRT)
     start_brt = now_brt - timedelta(minutes=minutes)
@@ -925,14 +463,8 @@ def _to_mode_bounds(start_brt: datetime, end_brt_inclusive: datetime, mode: str)
         return utc_bounds_from_brt_bounds(start_brt, end_brt_inclusive)
     return start_brt, end_brt_inclusive
 
-# -- Descobrir colunas reais na tabela rodadas_cliente --
-
 @st.cache_data(show_spinner=False, ttl=120)
 def _get_table_columns(schema: str, table: str) -> set[str]:
-    """
-    Lê INFORMATION_SCHEMA para descobrir os nomes reais das colunas.
-    Retorna um conjunto em minúsculas para facilitar o match.
-    """
     q = """
         SELECT COLUMN_NAME
         FROM INFORMATION_SCHEMA.COLUMNS
@@ -943,22 +475,13 @@ def _get_table_columns(schema: str, table: str) -> set[str]:
     return set(c.lower() for c in cols["COLUMN_NAME"].astype(str))
 
 def _pick(existing: set[str], candidates: list[str]) -> str | None:
-    """
-    Retorna o primeiro nome de coluna, dentre 'candidates',
-    que existir em 'existing' (case-insensitive).
-    """
     for c in candidates:
         if c.lower() in existing:
             return c
     return None
 
-# === (ADD) – Info de coluna no INFORMATION_SCHEMA ===
 @st.cache_data(show_spinner=False, ttl=120)
 def _get_column_info(schema: str, table: str, column: str) -> dict:
-    """
-    Retorna metadados da coluna (data_type, column_type, numeric_precision, etc.).
-    Usado para decidir como transformar a coluna de tempo em DATETIME.
-    """
     q = """
         SELECT
             DATA_TYPE               AS data_type,
@@ -975,29 +498,13 @@ def _get_column_info(schema: str, table: str, column: str) -> dict:
         df = pd.read_sql(text(q), conn, params={"schema": schema, "table": table, "col": column})
     return {} if df.empty else df.iloc[0].to_dict()
 
-# === (ADD) – Builder de expressão base de timestamp ===
 def _build_ts_base_expr(created_col: str) -> str:
-    """
-    Retorna a expressão SQL (MySQL) que produz um DATETIME a partir da coluna de criação.
-    Casos suportados:
-      - DATETIME/TIMESTAMP -> usa direto (r.`col`)
-      - INT/BIGINT/DECIMAL -> Unix epoch (segundos)     -> FROM_UNIXTIME(r.`col`)
-      - INT/BIGINT/DECIMAL com "13+ dígitos" (ms)       -> FROM_UNIXTIME(r.`col`/1000.0)
-      - VARCHAR/TEXT no formato 'YYYY-MM-DD HH:MM:SS'    -> STR_TO_DATE(r.`col`, '%Y-%m-%d %H:%i:%s')
-    Se não for possível inferir, retorna r.`col` (deixa como está).
-    """
     info = _get_column_info(db_name or "", "rodadas_cliente", created_col)
     dt = (info.get("data_type") or "").lower()
-
     col_sql = f"r.`{created_col}`"
-
-    # 1) Tipos temporais nativos
     if dt in ("timestamp", "datetime", "date"):
         return col_sql
-
-    # 2) Numéricos -> tratar como epoch
     if dt in ("int", "integer", "bigint", "smallint", "mediumint", "tinyint", "decimal", "numeric", "double", "float", "real"):
-        # Heurística: precisão >= 13 => provavelmente milissegundos
         numeric_precision = info.get("numeric_precision")
         numeric_scale = info.get("numeric_scale")
         if numeric_precision is not None:
@@ -1006,14 +513,9 @@ def _build_ts_base_expr(created_col: str) -> str:
                     return f"FROM_UNIXTIME({col_sql}/1000.0)"
             except Exception:
                 pass
-        # padrão: epoch em segundos
         return f"FROM_UNIXTIME({col_sql})"
-
-    # 3) Strings comuns -> tentar parse ISO padrão
     if dt in ("varchar", "char", "text", "longtext", "mediumtext", "tinytext"):
         return f"STR_TO_DATE({col_sql}, '%Y-%m-%d %H:%i:%s')"
-
-    # 4) Fallback
     return col_sql
 
 @st.cache_data(show_spinner=False, ttl=120)
@@ -1048,27 +550,17 @@ def _resolve_rounds_columns() -> dict:
         "missing": faltando
     }
 
-res = _resolve_rounds_columns()
-if res["missing"]:
-    with st.expander("⚠️ Diagnóstico de colunas ausentes em rodadas_cliente"):
-        st.write("Colunas encontradas na tabela:", sorted(list(res["existing"])))
-        st.error(f"As colunas lógicas abaixo não foram mapeadas no banco: {', '.join(res['missing'])}")
-    st.stop()
-
-COLS = res["map"]
-
-# -- Builder SQL seguro (opção dividir por 100) --
 def _sql_rodadas_clientes(mode: str, divide_por_100: bool):
+    res = _resolve_rounds_columns()
+    COLS = res["map"]
     gastos_expr = f"r.`{COLS['gastos']}`/100" if divide_por_100 else f"r.`{COLS['gastos']}`"
     ganhos_expr = f"r.`{COLS['ganhos']}`/100" if divide_por_100 else f"r.`{COLS['ganhos']}`"
-
-    ts_base = _build_ts_base_expr(COLS["created_at"])  # <-- usa helper que entende epoch
+    ts_base = _build_ts_base_expr(COLS["created_at"])
     ts_expr = (
         f"DATE_FORMAT(DATE_ADD({ts_base}, INTERVAL -3 HOUR), '%Y-%m-%d %H:%i:%s')"
         if mode == "UTC" else
         f"DATE_FORMAT({ts_base}, '%Y-%m-%d %H:%i:%s')"
     )
-
     return f"""
         SELECT
             r.`{COLS['cliente_id']}`    AS cliente_id,
@@ -1085,41 +577,6 @@ def _sql_rodadas_clientes(mode: str, divide_por_100: bool):
         LIMIT 50000
     """
 
-
-# -- UI: valores em centavos? --
-st.caption("Se *gastos/ganhos* estiverem em centavos, marque para dividir por 100.")
-dividir_por_100 = st.checkbox("↘️ Valores em centavos (dividir por 100)", value=False)
-
-# -- Dados: período ativo --
-with st.spinner("🔄 Carregando rodadas do período..."):
-    df_rodadas = fetch_df(_sql_rodadas_clientes(mode, dividir_por_100), params)
-
-
-# -- Dados: últimos 60 minutos (consulta + fallback de fuso) --
-_60_start_brt, _60_end_brt_inc = _last_minutes_bounds_brt(60)
-_60_start_ts, _60_end_ts = _to_mode_bounds(_60_start_brt, _60_end_brt_inc, mode)
-
-params60 = {"start_ts": fmt(_60_start_ts), "end_ts": fmt(_60_end_ts)}
-with st.spinner("⏱️ Carregando rodadas (últimos 60 minutos)..."):
-    df_rodadas_60 = fetch_df(_sql_rodadas_clientes(mode, dividir_por_100), params60)
-
-# Fallback: se veio vazio, tenta a interpretação oposta de fuso
-    df_rodadas_60_fb = None
-if (df_rodadas_60 is None or df_rodadas_60.empty):
-    if mode == "UTC":
-        # Tentar como se a coluna já estivesse em BRT (ou seja, sem converter para UTC na janela)
-        params60_fallback = {"start_ts": fmt(_60_start_brt), "end_ts": fmt(_60_end_brt_inc)}
-        df_rodadas_60_fb = fetch_df(_sql_rodadas_clientes("BRT", dividir_por_100), params60_fallback)
-    else:
-        # Tentar como se a coluna estivesse em UTC
-        fb_start_ts, fb_end_ts = utc_bounds_from_brt_bounds(_60_start_brt, _60_end_brt_inc)
-        params60_fallback = {"start_ts": fmt(fb_start_ts), "end_ts": fmt(fb_end_ts)}
-        df_rodadas_60_fb = fetch_df(_sql_rodadas_clientes("UTC", dividir_por_100), params60_fallback)
-
-    if df_rodadas_60_fb is not None and not df_rodadas_60_fb.empty:
-        st.info("ℹ️ Nenhum resultado na interpretação de fuso atual; resultados mostrados usando fallback de fuso.")
-        df_rodadas_60 = df_rodadas_60_fb
-# -- Sanitização --
 def _sanitize_rounds(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
         return df
@@ -1130,195 +587,648 @@ def _sanitize_rounds(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
     return df
 
-df_rodadas    = _sanitize_rounds(df_rodadas)
-df_rodadas_60 = _sanitize_rounds(df_rodadas_60)
+# =====================================================================
+# ========================== ÁREA: NET DEPÓSITO ========================
+# =====================================================================
+if area == "NetDepósito":
 
-# -- Abas: Tabela geral + Métricas 60m --
-tab_tbl, tab_metrics = st.tabs(["📋 Tabela (período ativo)", "📊 Métricas – últimos 60 min"])
+    # ======= Coleta (somente quando NetDepósito) =======
+    with st.spinner("🔄 Carregando dados..."):
+        df_list = fetch_df(sql_pagamentos_intervalo(mode), params)
+        df_day  = fetch_df(sql_resumo_por_dia(mode), params)
+        df_hour = fetch_df(sql_resumo_por_hora(mode), params)
+        df_top30_saques_dia = fetch_df(sql_top30_saques_diarios(mode), params)
+        df_top_val_saques   = fetch_df(sql_top_ids_valor(mode, "saque"), params)
+        df_top_qtd_saques   = fetch_df(sql_top_ids_qtd(mode, "saque"), params)
+        df_top_val_deps     = fetch_df(sql_top_ids_valor(mode, "deposito"), params)
+        df_top_qtd_deps     = fetch_df(sql_top_ids_qtd(mode, "deposito"), params)
 
-with tab_tbl:
-    if df_rodadas is None or df_rodadas.empty:
-        st.info("ℹ️ Nenhuma rodada encontrada no período selecionado.")
+    # ======= Sanitização/Filtros =======
+    if not df_list.empty:
+        df_list["amount_corrigido"] = pd.to_numeric(df_list["amount_corrigido"], errors="coerce").fillna(0.0)
+        df_list["operacao"] = df_list["operacao"].astype(str)
+        df_list["id_do_cliente"] = df_list["id_do_cliente"].astype(str)
+        if client_filter:
+            df_list = df_list[df_list["id_do_cliente"].str.contains(client_filter, case=False, na=False)]
+        ops_lower = df_list["operacao"].str.lower()
+        if op_filter == "Depósitos":
+            df_list = df_list[ops_lower.str.startswith("depos", na=False) | ops_lower.str.contains("deposit", na=False)]
+        elif op_filter == "Saques":
+            df_list = df_list[ops_lower.str.startswith("withdr", na=False) | ops_lower.str.contains("withdraw", na=False)]
+
+    if not df_day.empty:
+        df_day["data_brt"] = pd.to_datetime(df_day["data_brt"], errors="coerce")
+        df_day["total_depositos"] = pd.to_numeric(df_day["total_depositos"], errors="coerce").fillna(0.0)
+        df_day["total_saques"]    = pd.to_numeric(df_day["total_saques"],    errors="coerce").fillna(0.0)
+        df_day = df_day[df_day["data_brt"].notna()]
+        df_day = (df_day.groupby("data_brt", as_index=False)
+                  .agg(total_depositos=("total_depositos","sum"),
+                       total_saques=("total_saques","sum"))
+                  .sort_values("data_brt").reset_index(drop=True))
+
+    if not df_hour.empty:
+        df_hour["data_brt"]  = pd.to_datetime(df_hour["data_brt"], errors="coerce")
+        df_hour = df_hour[df_hour["data_brt"].notna()]
+        df_hour["hora_brt"]  = pd.to_numeric(df_hour["hora_brt"], errors="coerce").fillna(0).astype(int).clip(0, 23)
+        df_hour["deposito_h"] = pd.to_numeric(df_hour["deposito_h"], errors="coerce").fillna(0.0)
+        df_hour["saque_h"]    = pd.to_numeric(df_hour["saque_h"],    errors="coerce").fillna(0.0)
+        df_hour["hora_ts"] = df_hour["data_brt"] + pd.to_timedelta(df_hour["hora_brt"], unit="h")
+
+    # ======= KPIs + Calendário Inline =======
+    def safe_sum(series):
+        return float(series.fillna(0).sum()) if series is not None else 0.0
+
+    if not df_list.empty:
+        ops_lower = df_list["operacao"].str.lower()
+        is_dep = ops_lower.str.startswith("depos", na=False) | ops_lower.str.contains("deposit", na=False)
+        is_wdr = ops_lower.str.startswith("withdr", na=False) | ops_lower.str.contains("withdraw", na=False)
+        total_deps = safe_sum(df_list.loc[is_dep, "amount_corrigido"])
+        total_saques = safe_sum(df_list.loc[is_wdr, "amount_corrigido"])
+        total_transactions = int(len(df_list))
+        avg_transaction = (total_deps + total_saques) / total_transactions if total_transactions > 0 else 0.0
     else:
-        st.dataframe(
-            df_rodadas,
-            use_container_width=True,
-            height=480,
-            column_config={
-                "gastos": st.column_config.NumberColumn("Gastos (R$)", format="R$ %.2f"),
-                "ganhos": st.column_config.NumberColumn("Ganhos (R$)", format="R$ %.2f"),
-                "created_at_brt": "Data/Hora (BRT)",
-            }
+        total_deps = total_saques = avg_transaction = 0.0
+        total_transactions = 0
+
+    net = total_deps - total_saques
+
+    left, right = st.columns([3, 3])
+    with left:
+        st.markdown(f'''
+            <div class="section-header inline-row">
+                <div class="section-title">📊 Métricas Principais</div>
+            </div>
+        ''', unsafe_allow_html=True)
+    with right:
+        with st.form("inline_date_form", clear_on_submit=False):
+            st.markdown('<div class="inline-card">', unsafe_allow_html=True)
+            c1, c2, c3, c4 = st.columns([1.2, 1.2, 0.9, 0.9])
+            with c1:
+                start_pick = st.date_input("Início", value=date.today(), key="inline_start_picker", label_visibility="collapsed")
+            with c2:
+                end_pick = st.date_input("Fim", value=st.session_state.get("inline_end", date.today()), key="inline_end_picker", label_visibility="collapsed")
+            with c3:
+                apply_inline = st.form_submit_button("Aplicar", type="primary", use_container_width=True)
+            with c4:
+                clear_inline = st.form_submit_button("Limpar", type="secondary", use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            if apply_inline:
+                st.session_state["inline_start"] = start_pick
+                st.session_state["inline_end"] = end_pick
+                st.session_state["inline_use"] = True
+                st.rerun()
+            if clear_inline:
+                st.session_state["inline_use"] = False
+                st.rerun()
+
+    # Cards
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown(f'''
+            <div class="metric-card">
+                <div class="metric-title">💰 Total Depósitos</div>
+                <div class="metric-value">{to_brl(total_deps)}</div>
+                <div class="metric-delta">↗️ Entrada de capital</div>
+            </div>
+        ''', unsafe_allow_html=True)
+    with c2:
+        st.markdown(f'''
+            <div class="metric-card">
+                <div class="metric-title">💸 Total Saques</div>
+                <div class="metric-value">{to_brl(total_saques)}</div>
+                <div class="metric-delta">↙️ Saída de capital</div>
+            </div>
+        ''', unsafe_allow_html=True)
+    with c3:
+        delta_color = COLOR_ACCENT if net >= 0 else "#E74C3C"
+        net_icon = "📈" if net >= 0 else "📉"
+        st.markdown(f'''
+            <div class="metric-card">
+                <div class="metric-title">⚖️ Saldo Líquido</div>
+                <div class="metric-value" style="color: {delta_color};">{to_brl(net)}</div>
+                <div class="metric-delta">{net_icon} {"Positivo" if net >= 0 else "Negativo"}</div>
+            </div>
+        ''', unsafe_allow_html=True)
+    with c4:
+        st.markdown(f'''
+            <div class="metric-card">
+                <div class="metric-title">🔢 Transações</div>
+                <div class="metric-value">{total_transactions:,}</div>
+                <div class="metric-delta">💳 Ticket médio: {to_brl(avg_transaction)}</div>
+            </div>
+        ''', unsafe_allow_html=True)
+
+    st.write("")
+    create_download_button(df_list, "📥 Exportar Lista Completa", "lista_pagamentos.csv")
+
+    # ======= Evolução diária =======
+    st.markdown(f'''
+        <div class="section-header">
+            <div class="section-title">📈 Evolução Temporal</div>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    if df_day.empty:
+        st.info("ℹ️ Sem dados disponíveis no período selecionado.")
+    else:
+        df_day_plot = df_day.sort_values("data_brt").copy()
+
+        def fit_and_forecast_daily(df_day_in: pd.DataFrame, horizon_days: int = 7):
+            if df_day_in is None or df_day_in.empty:
+                return None
+            work = df_day_in.copy().sort_values("data_brt").reset_index(drop=True)
+        # garante sequência diária contínua
+            full_idx = pd.date_range(work["data_brt"].min(), work["data_brt"].max(), freq="D")
+            work = work.set_index("data_brt").reindex(full_idx)
+            work.index.name = "data_brt"
+
+            # corrigido: passa a série diretamente para pd.to_numeric
+            for col in ["total_depositos", "total_saques"]:
+                work[col] = pd.to_numeric(work[col], errors="coerce").fillna(0.0)
+
+            work = work.reset_index().rename(columns={"index": "data_brt"})
+
+            work["t"] = np.arange(len(work), dtype=float)
+            out = {}
+            for col in ["total_depositos", "total_saques"]:
+                y = work[col].to_numpy(dtype=np.float64).reshape(-1, 1)
+                X = work["t"].to_numpy(dtype=np.float64).reshape(-1, 1)
+                if len(work) < 3 or np.allclose(y, y.mean()):
+                    out[col] = None
+                    continue
+                model = LinearRegression().fit(X, y)
+                max_t = work["t"].max()
+                h = max(horizon_days, 1)
+                t_future = np.arange(max_t + 1, max_t + 1 + h).reshape(-1, 1)
+                y_pred = model.predict(t_future).ravel()
+                future_dates = pd.date_range(work["data_brt"].max() + pd.Timedelta(days=1), periods=h, freq="D")
+                out[col] = pd.DataFrame({
+                    "data_brt": future_dates,
+                    f"{col}_pred": np.clip(y_pred, 0, None)
+                })
+            if out["total_depositos"] is None and out["total_saques"] is None:
+                return None
+            df_fut = None
+            for piece in [out["total_depositos"], out["total_saques"]]:
+                if piece is None:
+                    continue
+                df_fut = piece if df_fut is None else df_fut.merge(piece, on="data_brt", how="outer")
+            return df_fut
+
+        tab_all, tab_7d, tab_ml = st.tabs(["📊 Período selecionado", "📆 Últimos 7 dias", "🔮 Projeção (ML)"])
+
+        with tab_all:
+            fig_all = go.Figure()
+            fig_all.add_trace(go.Bar(
+                x=df_day_plot["data_brt"], y=df_day_plot["total_depositos"],
+                name="Depósitos", marker_color=COLOR_ACCENT, opacity=0.85
+            ))
+            fig_all.add_trace(go.Bar(
+                x=df_day_plot["data_brt"], y=df_day_plot["total_saques"],
+                name="Saques", marker_color=COLOR_TEXT, opacity=0.85
+            ))
+            fig_all.update_layout(
+                barmode="group", height=420, paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG,
+                font=dict(color=COLOR_TEXT), title="Evolução Diária (Período Selecionado)",
+                yaxis_title="Valor (R$)", yaxis_tickformat="R$ ,.0f"
+            )
+            st.plotly_chart(fig_all, use_container_width=True)
+            create_download_button(df_day_plot, "📥 Baixar dados do período", "agregado_diario_periodo.csv")
+
+        with tab_7d:
+            if not df_day_plot.empty:
+                last_date = df_day_plot["data_brt"].max()
+                start_7d = (last_date - pd.Timedelta(days=6)).normalize()
+                df_7d = df_day_plot[df_day_plot["data_brt"] >= start_7d].copy()
+                full_idx = pd.date_range(start_7d.normalize(), last_date.normalize(), freq="D")
+                df_7d = (
+                    df_7d.set_index("data_brt")
+                        .reindex(full_idx)
+                        .rename_axis("data_brt")
+                        .fillna({"total_depositos": 0.0, "total_saques": 0.0})
+                        .reset_index()
+                )
+                fig_7d = go.Figure()
+                fig_7d.add_trace(go.Bar(
+                    x=df_7d["data_brt"], y=df_7d["total_depositos"],
+                    name="Depósitos (dia)", marker_color=COLOR_ACCENT, opacity=0.9
+                ))
+                fig_7d.add_trace(go.Bar(
+                    x=df_7d["data_brt"], y=df_7d["total_saques"],
+                    name="Saques (dia)", marker_color=COLOR_TEXT, opacity=0.9
+                ))
+                fig_7d.update_layout(
+                    barmode="group", height=420, paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG,
+                    font=dict(color=COLOR_TEXT), title="Evolução Diária – Últimos 7 Dias",
+                    yaxis_title="Valor (R$)", yaxis_tickformat="R$ ,.0f"
+                )
+                st.plotly_chart(fig_7d, use_container_width=True)
+                create_download_button(df_7d, "📥 Baixar últimos 7 dias", "agregado_diario_7d.csv")
+            else:
+                st.info("Sem dados para compor a janela de 7 dias.")
+
+        with tab_ml:
+            df_forecast = fit_and_forecast_daily(df_day_plot, horizon_days=7)
+            if df_forecast is None or df_forecast.empty:
+                st.info("Sem dados suficientes para projetar.")
+            else:
+                fig_ml = go.Figure()
+                fig_ml.add_trace(go.Scatter(
+                    x=df_day_plot["data_brt"], y=df_day_plot["total_depositos"],
+                    mode="lines+markers", name="Depósitos (histórico)", line=dict(width=3)
+                ))
+                fig_ml.add_trace(go.Scatter(
+                    x=df_day_plot["data_brt"], y=df_day_plot["total_saques"],
+                    mode="lines+markers", name="Saques (histórico)", line=dict(width=3)
+                ))
+                if "total_depositos_pred" in df_forecast.columns:
+                    fig_ml.add_trace(go.Scatter(
+                        x=df_forecast["data_brt"], y=df_forecast["total_depositos_pred"],
+                        mode="lines+markers", name="Projeção Depósitos (7d)", line=dict(dash="dash", width=3)
+                    ))
+                if "total_saques_pred" in df_forecast.columns:
+                    fig_ml.add_trace(go.Scatter(
+                        x=df_forecast["data_brt"], y=df_forecast["total_saques_pred"],
+                        mode="lines+markers", name="Projeção Saques (7d)", line=dict(dash="dash", width=3)
+                    ))
+                fig_ml.update_layout(
+                    height=420, paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG,
+                    font=dict(color=COLOR_TEXT), title="Projeção (Linear) – Próximos 7 Dias",
+                    yaxis_title="Valor (R$)", yaxis_tickformat="R$ ,.0f"
+                )
+                st.plotly_chart(fig_ml, use_container_width=True)
+                create_download_button(df_forecast, "🔮 Baixar projeções (7d)", "projecoes_ml_7d.csv")
+
+    # ======= Análise Horária =======
+    st.markdown(f'''
+        <div class="section-header">
+            <div class="section-title">⏰ Análise Horária</div>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    if df_hour.empty:
+        st.info("ℹ️ Sem dados horários disponíveis.")
+    else:
+        df_hour_pivot = df_hour.pivot_table(
+            index=df_hour["data_brt"].dt.date,
+            columns="hora_brt",
+            values=["deposito_h", "saque_h"],
+            aggfunc="sum",
+            fill_value=0,
         )
-        create_download_button(df_rodadas, "📥 Exportar rodadas do período", "rodadas_periodo.csv")
+        tab1, tab2 = st.tabs(["📈 Evolução Horária", "🔥 Heatmap de Atividade"])
+        with tab1:
+            ordered = df_hour.sort_values("hora_ts")
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatter(x=ordered["hora_ts"], y=ordered["deposito_h"],
+                                      mode="lines+markers", name="Depósitos",
+                                      line=dict(color=COLOR_ACCENT, width=3), marker=dict(size=6, color=COLOR_ACCENT)))
+            fig2.add_trace(go.Scatter(x=ordered["hora_ts"], y=ordered["saque_h"],
+                                      mode="lines+markers", name="Saques",
+                                      line=dict(color=COLOR_TEXT, width=3), marker=dict(size=6, color=COLOR_TEXT)))
+            fig2.update_layout(
+                title="Atividade Financeira por Hora", paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG,
+                font=dict(color=COLOR_TEXT), xaxis_title="Data e Hora", yaxis_title="Valor (R$)",
+                yaxis_tickformat="R$ ,.0f", height=400,
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+        with tab2:
+            if not df_hour_pivot.empty:
+                depositos_data = df_hour_pivot["deposito_h"].fillna(0).values
+                fig3 = go.Figure(data=go.Heatmap(
+                    z=depositos_data, x=list(range(24)), y=[str(d) for d in df_hour_pivot.index],
+                    colorscale=[[0, COLOR_BG], [1, COLOR_ACCENT]], showscale=True,
+                    hovertemplate='Data: %{y}<br>Hora: %{x}:00<br>Depósitos: R$ %{z:,.2f}<extra></extra>'
+                ))
+                fig3.update_layout(
+                    title="🔥 Heatmap - Depósitos por Hora", xaxis_title="Hora do Dia", yaxis_title="Data",
+                    paper_bgcolor=COLOR_LIGHT, plot_bgcolor=COLOR_BG, font=dict(color=COLOR_TEXT), height=400,
+                    coloraxis_colorbar=dict(
+                        tickfont=dict(color=COLOR_DARK),
+                        title=dict(text="", font=dict(color=COLOR_DARK))
+                    )
+                )
+                st.plotly_chart(fig3, use_container_width=True)
+        create_download_button(df_hour, "📥 Dados Horários", "agregado_horario.csv")
 
-with tab_metrics:
-    st.caption(f"Janela analisada: **{fmt(_60_start_brt)} → {fmt(_60_end_brt_inc)}** (BRT)")
+    # ======= Rankings =======
+    st.markdown(f'''
+        <div class="section-header">
+            <div class="section-title">🏆 Rankings e Top Performers</div>
+        </div>
+    ''', unsafe_allow_html=True)
 
-    if df_rodadas_60 is None or df_rodadas_60.empty:
-        st.warning("Sem rodadas nos últimos 60 minutos.")
+    st.markdown("### 🥇 Top 30 - Maior Atividade de Saques por Dia")
+    if not df_top30_saques_dia.empty:
+        df_top30 = df_top30_saques_dia.copy()
+        df_top30["id_do_cliente"] = df_top30["id_do_cliente"].astype(str)
+        df_top30 = df_top30.sort_values("total_sacado", ascending=True).head(15)
+        fig_top = px.bar(
+            df_top30,
+            x="total_sacado",
+            y="id_do_cliente",
+            orientation="h",
+            color="qtd_saques",
+            color_continuous_scale=[
+                [0.0, COLOR_BG],
+                [0.5, "#BFF288"],
+                [1.0, COLOR_ACCENT]
+            ],
+            labels={
+                "total_sacado": "Total Sacado (R$)",
+                "id_do_cliente": "Cliente (ID)",
+                "qtd_saques": "Qtd. saques"
+            },
+            height=440,
+        )
+        fig_top.update_yaxes(
+            type="category",
+            categoryorder="array",
+            categoryarray=df_top30["id_do_cliente"].tolist(),
+            tickfont=dict(size=11, color=COLOR_TEXT)
+        )
+        fig_top.update_xaxes(
+            tickformat="R$ ,.0f",
+            gridcolor="rgba(39,6,68,.15)"
+        )
+        fig_top.update_layout(
+            paper_bgcolor=COLOR_LIGHT,
+            plot_bgcolor=COLOR_BG,
+            font=dict(color=COLOR_TEXT),
+            margin=dict(l=150, r=40, t=50, b=40),
+            coloraxis_colorbar=dict(title="Qtd saques")
+        )
+        fig_top.update_traces(
+            customdata=df_top30[["qtd_saques"]],
+            hovertemplate="ID: %{y}<br>Total: R$ %{x:,.2f}<br>Qtd saques: %{customdata[0]}<extra></extra>",
+            text=df_top30["total_sacado"].map(to_brl),
+            textposition="outside",
+            cliponaxis=False
+        )
+        col_chart, col_table = st.columns([2, 1])
+        with col_chart:
+            st.plotly_chart(fig_top, use_container_width=True)
+        with col_table:
+            st.dataframe(
+                df_top30_saques_dia,
+                use_container_width=True,
+                height=500,
+                column_config={"total_sacado": st.column_config.NumberColumn("Total Sacado (R$)", format="R$ %.2f")},
+            )
+        create_download_button(df_top30_saques_dia, "📥 Baixar Top 30 Saques/Dia", "top30_saques_dia.csv")
     else:
-        # ---- Cálculos base (60m) ----
-        media_gastos = float(df_rodadas_60["gastos"].mean()) if "gastos" in df_rodadas_60 else 0.0
-        media_ganhos = float(df_rodadas_60["ganhos"].mean()) if "ganhos" in df_rodadas_60 else 0.0
-         # NOVO: estatísticas de 60 min
-        max_aposta = float(df_rodadas_60["gastos"].max()) if "gastos" in df_rodadas_60 else 0.0
-        max_ganho  = float(df_rodadas_60["ganhos"].max()) if "ganhos" in df_rodadas_60 else 0.0
-        total_gasto_60 = float(df_rodadas_60["gastos"].sum()) if "gastos" in df_rodadas_60 else 0.0
-        total_ganho_60 = float(df_rodadas_60["ganhos"].sum()) if "ganhos" in df_rodadas_60 else 0.0
+        st.info("Sem registros para Top 30 no período.")
 
-        # jogo mais jogado
-        jogo_mais_jogado, qtd_jogo_mais = "—", 0
-        if "game_name" in df_rodadas_60 and not df_rodadas_60["game_name"].isna().all():
-            vc = df_rodadas_60["game_name"].value_counts(dropna=True)
-            if not vc.empty:
-                jogo_mais_jogado = str(vc.index[0])
-                qtd_jogo_mais = int(vc.iloc[0])
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("### 💸 Top Valor – Saques")
+        st.dataframe(df_top_val_saques, use_container_width=True)
+        create_download_button(df_top_val_saques, "📥 Baixar Top Valor Saques", "top_val_saques.csv")
+        st.markdown("### 🧮 Top Qtd – Saques")
+        st.dataframe(df_top_qtd_saques, use_container_width=True)
+        create_download_button(df_top_qtd_saques, "📥 Baixar Top Qtd Saques", "top_qtd_saques.csv")
+    with c2:
+        st.markdown("### 💰 Top Valor – Depósitos")
+        st.dataframe(df_top_val_deps, use_container_width=True)
+        create_download_button(df_top_val_deps, "📥 Baixar Top Valor Depósitos", "top_val_depositos.csv")
+        st.markdown("### 🧮 Top Qtd – Depósitos")
+        st.dataframe(df_top_qtd_deps, use_container_width=True)
+        create_download_button(df_top_qtd_deps, "📥 Baixar Top Qtd Depósitos", "top_qtd_depositos.csv")
 
-        # top clientes por ganhos e por nº de rodadas (60m)
-        top_ganhos_clientes = pd.DataFrame()
-        top_rodadas_clientes = pd.DataFrame()
+# =====================================================================
+# ============================ ÁREA: CASSINO ===========================
+# =====================================================================
+elif area == "Cassino":
 
-        if set(["cliente_id","ganhos"]).issubset(df_rodadas_60.columns):
-            top_ganhos_clientes = (df_rodadas_60.groupby("cliente_id", as_index=False)
-                                   .agg(ganhos_totais=("ganhos","sum"),
-                                        rodadas=("cliente_id","count"))
-                                   .sort_values("ganhos_totais", ascending=False)
-                                   .head(15))
+    st.markdown(f'''
+        <div class="section-header">
+            <div class="section-title">🎮 Rodadas por Cliente</div>
+        </div>
+    ''', unsafe_allow_html=True)
 
-        if "cliente_id" in df_rodadas_60.columns:
-            top_rodadas_clientes = (df_rodadas_60.groupby("cliente_id", as_index=False)
-                                    .agg(rodadas=("cliente_id","count"),
-                                         ganhos_totais=("ganhos","sum") if "ganhos" in df_rodadas_60.columns else ("cliente_id","count"))
-                                    .sort_values("rodadas", ascending=False)
-                                    .head(15))
+    # Diagnóstico de colunas
+    res = _resolve_rounds_columns()
+    if res["missing"]:
+        with st.expander("⚠️ Diagnóstico de colunas ausentes em rodadas_cliente"):
+            st.write("Colunas encontradas na tabela:", sorted(list(res["existing"])))
+            st.error(f"As colunas lógicas abaixo não foram mapeadas no banco: {', '.join(res['missing'])}")
+        st.stop()
 
-        # destacar 1º lugar de cada ranking
-        best_ganhos_id, best_ganhos_val = "—", 0.0
-        if not top_ganhos_clientes.empty:
-            best_ganhos_id  = str(top_ganhos_clientes.iloc[0]["cliente_id"])
-            best_ganhos_val = float(top_ganhos_clientes.iloc[0]["ganhos_totais"])
+    COLS = res["map"]
 
-        best_rodadas_id, best_rodadas_qtd = "—", 0
-        if not top_rodadas_clientes.empty:
-            best_rodadas_id  = str(top_rodadas_clientes.iloc[0]["cliente_id"])
-            best_rodadas_qtd = int(top_rodadas_clientes.iloc[0]["rodadas"])
-# ---- NOVOS cartões: aposta máxima, maior ganho, totais 60m ----
-        n1, n2, n3, n4 = st.columns(4)
-        with n1:
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">⬆️ Aposta mais alta (60m)</div>
-                    <div class="metric-value">{to_brl(max_aposta)}</div>
-                    <div class="metric-delta">Maior "gastos"</div>
-                </div>
-            ''', unsafe_allow_html=True)
-        with n2:
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">🏅 Maior ganho (60m)</div>
-                    <div class="metric-value">{to_brl(max_ganho)}</div>
-                    <div class="metric-delta">Pico de "ganhos"</div>
-                </div>
-            ''', unsafe_allow_html=True)
-        with n3:
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">🧾 Total gasto (60m)</div>
-                    <div class="metric-value">{to_brl(total_gasto_60)}</div>
-                    <div class="metric-delta">Somatório de "gastos"</div>
-                </div>
-            ''', unsafe_allow_html=True)
-        with n4:
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">💎 Total ganho (60m)</div>
-                    <div class="metric-value">{to_brl(total_ganho_60)}</div>
-                    <div class="metric-delta">Somatório de "ganhos"</div>
-                </div>
-            ''', unsafe_allow_html=True)
-        # ---- Cartões (mesmo estilo dos KPIs principais) ----
-        m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">💳 Média Gastos (60m)</div>
-                    <div class="metric-value">{to_brl(media_gastos)}</div>
-                    <div class="metric-delta">Ticket médio de aposta</div>
-                </div>
-            ''', unsafe_allow_html=True)
-        with m2:
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">🏆 Média Ganhos (60m)</div>
-                    <div class="metric-value">{to_brl(media_ganhos)}</div>
-                    <div class="metric-delta">Retorno médio por rodada</div>
-                </div>
-            ''', unsafe_allow_html=True)
-        with m3:
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">🎯 Jogo mais jogado</div>
-                    <div class="metric-value">{jogo_mais_jogado}</div>
-                    <div class="metric-delta">Rodadas: {qtd_jogo_mais:,}</div>
-                </div>
-            ''', unsafe_allow_html=True)
-        with m4:
-            total_rodadas = int(len(df_rodadas_60))
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">⏱️ Rodadas (60m)</div>
-                    <div class="metric-value">{total_rodadas:,}</div>
-                    <div class="metric-delta">Volume recente</div>
-                </div>
-            ''', unsafe_allow_html=True)
+    st.caption("Se *gastos/ganhos* estiverem em centavos, marque para dividir por 100.")
+    dividir_por_100 = st.checkbox("↘️ Valores em centavos (dividir por 100)", value=False)
 
-        # segunda linha de cartões: destaques por cliente
-        k1, k2 = st.columns(2)
-        with k1:
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">👑 Cliente com mais ganhos (60m)</div>
-                    <div class="metric-value">{best_ganhos_id}</div>
-                    <div class="metric-delta">Total: {to_brl(best_ganhos_val)}</div>
-                </div>
-            ''', unsafe_allow_html=True)
-        with k2:
-            st.markdown(f'''
-                <div class="metric-card">
-                    <div class="metric-title">🏃 Cliente com mais jogadas (60m)</div>
-                    <div class="metric-value">{best_rodadas_id}</div>
-                    <div class="metric-delta">Rodadas: {best_rodadas_qtd:,}</div>
-                </div>
-            ''', unsafe_allow_html=True)
+    # Dados: período ativo
+    with st.spinner("🔄 Carregando rodadas do período..."):
+        df_rodadas = fetch_df(_sql_rodadas_clientes(mode, dividir_por_100), params)
 
-        # ---- Tabelas auxiliares ----
-        st.markdown("### 🥇 Top clientes por ganhos (60m)")
-        if top_ganhos_clientes.empty:
-            st.info("Sem clientes com ganhos nesta janela.")
+    # Dados: últimos 60 minutos com fallback de fuso
+    _60_start_brt, _60_end_brt_inc = _last_minutes_bounds_brt(60)
+    _60_start_ts, _60_end_ts = _to_mode_bounds(_60_start_brt, _60_end_brt_inc, mode)
+    params60 = {"start_ts": fmt(_60_start_ts), "end_ts": fmt(_60_end_ts)}
+
+    with st.spinner("⏱️ Carregando rodadas (últimos 60 minutos)..."):
+        df_rodadas_60 = fetch_df(_sql_rodadas_clientes(mode, dividir_por_100), params60)
+
+        df_rodadas_60_fb = None
+        if (df_rodadas_60 is None or df_rodadas_60.empty):
+            if mode == "UTC":
+                params60_fallback = {"start_ts": fmt(_60_start_brt), "end_ts": fmt(_60_end_brt_inc)}
+                df_rodadas_60_fb = fetch_df(_sql_rodadas_clientes("BRT", dividir_por_100), params60_fallback)
+            else:
+                fb_start_ts, fb_end_ts = utc_bounds_from_brt_bounds(_60_start_brt, _60_end_brt_inc)
+                params60_fallback = {"start_ts": fmt(fb_start_ts), "end_ts": fmt(fb_end_ts)}
+                df_rodadas_60_fb = fetch_df(_sql_rodadas_clientes("UTC", dividir_por_100), params60_fallback)
+
+            if df_rodadas_60_fb is not None and not df_rodadas_60_fb.empty:
+                st.info("ℹ️ Nenhum resultado na interpretação de fuso atual; resultados mostrados usando fallback de fuso.")
+                df_rodadas_60 = df_rodadas_60_fb
+
+    # Sanitização
+    df_rodadas    = _sanitize_rounds(df_rodadas)
+    df_rodadas_60 = _sanitize_rounds(df_rodadas_60)
+
+    # Abas: Tabela geral + Métricas 60m
+    tab_tbl, tab_metrics = st.tabs(["📋 Tabela (período ativo)", "📊 Métricas – últimos 60 min"])
+
+    with tab_tbl:
+        if df_rodadas is None or df_rodadas.empty:
+            st.info("ℹ️ Nenhuma rodada encontrada no período selecionado.")
         else:
             st.dataframe(
-                top_ganhos_clientes,
+                df_rodadas,
                 use_container_width=True,
-                height=380,
+                height=480,
                 column_config={
-                    "ganhos_totais": st.column_config.NumberColumn("Ganhos Totais (R$)", format="R$ %.2f"),
-                    "rodadas": "Qtd. Rodadas"
+                    "gastos": st.column_config.NumberColumn("Gastos (R$)", format="R$ %.2f"),
+                    "ganhos": st.column_config.NumberColumn("Ganhos (R$)", format="R$ %.2f"),
+                    "created_at_brt": "Data/Hora (BRT)",
                 }
             )
-            create_download_button(top_ganhos_clientes, "📥 Exportar Top Ganhos (60m)", "top_ganhos_60m.csv")
+            create_download_button(df_rodadas, "📥 Exportar rodadas do período", "rodadas_periodo.csv")
 
-        st.markdown("### 🎮 Top clientes por número de jogadas (60m)")
-        if top_rodadas_clientes.empty:
-            st.info("Sem volume de jogadas nesta janela.")
+    with tab_metrics:
+        st.caption(f"Janela analisada: **{fmt(_60_start_brt)} → {fmt(_60_end_brt_inc)}** (BRT)")
+
+        if df_rodadas_60 is None or df_rodadas_60.empty:
+            st.warning("Sem rodadas nos últimos 60 minutos.")
         else:
-            st.dataframe(
-                top_rodadas_clientes,
-                use_container_width=True,
-                height=380,
-                column_config={
-                    "rodadas": "Qtd. Rodadas",
-                    "ganhos_totais": st.column_config.NumberColumn("Ganhos Totais (R$)", format="R$ %.2f") if "ganhos_totais" in top_rodadas_clientes.columns else "Ganhos Totais"
-                }
-            )
-            create_download_button(top_rodadas_clientes, "📥 Exportar Top Jogadas (60m)", "top_jogadas_60m.csv")
+            media_gastos = float(df_rodadas_60["gastos"].mean()) if "gastos" in df_rodadas_60 else 0.0
+            media_ganhos = float(df_rodadas_60["ganhos"].mean()) if "ganhos" in df_rodadas_60 else 0.0
+            max_aposta = float(df_rodadas_60["gastos"].max()) if "gastos" in df_rodadas_60 else 0.0
+            max_ganho  = float(df_rodadas_60["ganhos"].max()) if "ganhos" in df_rodadas_60 else 0.0
+            total_gasto_60 = float(df_rodadas_60["gastos"].sum()) if "gastos" in df_rodadas_60 else 0.0
+            total_ganho_60 = float(df_rodadas_60["ganhos"].sum()) if "ganhos" in df_rodadas_60 else 0.0
+
+            jogo_mais_jogado, qtd_jogo_mais = "—", 0
+            if "game_name" in df_rodadas_60 and not df_rodadas_60["game_name"].isna().all():
+                vc = df_rodadas_60["game_name"].value_counts(dropna=True)
+                if not vc.empty:
+                    jogo_mais_jogado = str(vc.index[0])
+                    qtd_jogo_mais = int(vc.iloc[0])
+
+            top_ganhos_clientes = pd.DataFrame()
+            top_rodadas_clientes = pd.DataFrame()
+
+            if set(["cliente_id","ganhos"]).issubset(df_rodadas_60.columns):
+                top_ganhos_clientes = (df_rodadas_60.groupby("cliente_id", as_index=False)
+                                       .agg(ganhos_totais=("ganhos","sum"),
+                                            rodadas=("cliente_id","count"))
+                                       .sort_values("ganhos_totais", ascending=False)
+                                       .head(15))
+
+            if "cliente_id" in df_rodadas_60.columns:
+                top_rodadas_clientes = (df_rodadas_60.groupby("cliente_id", as_index=False)
+                                        .agg(rodadas=("cliente_id","count"),
+                                             ganhos_totais=("ganhos","sum") if "ganhos" in df_rodadas_60.columns else ("cliente_id","count"))
+                                        .sort_values("rodadas", ascending=False)
+                                        .head(15))
+
+            best_ganhos_id, best_ganhos_val = "—", 0.0
+            if not top_ganhos_clientes.empty:
+                best_ganhos_id  = str(top_ganhos_clientes.iloc[0]["cliente_id"])
+                best_ganhos_val = float(top_ganhos_clientes.iloc[0]["ganhos_totais"])
+
+            best_rodadas_id, best_rodadas_qtd = "—", 0
+            if not top_rodadas_clientes.empty:
+                best_rodadas_id  = str(top_rodadas_clientes.iloc[0]["cliente_id"])
+                best_rodadas_qtd = int(top_rodadas_clientes.iloc[0]["rodadas"])
+
+            n1, n2, n3, n4 = st.columns(4)
+            with n1:
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">⬆️ Aposta mais alta (60m)</div>
+                        <div class="metric-value">{to_brl(max_aposta)}</div>
+                        <div class="metric-delta">Maior "gastos"</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+            with n2:
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">🏅 Maior ganho (60m)</div>
+                        <div class="metric-value">{to_brl(max_ganho)}</div>
+                        <div class="metric-delta">Pico de "ganhos"</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+            with n3:
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">🧾 Total gasto (60m)</div>
+                        <div class="metric-value">{to_brl(total_gasto_60)}</div>
+                        <div class="metric-delta">Somatório de "gastos"</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+            with n4:
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">💎 Total ganho (60m)</div>
+                        <div class="metric-value">{to_brl(total_ganho_60)}</div>
+                        <div class="metric-delta">Somatório de "ganhos"</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+
+            m1, m2, m3, m4 = st.columns(4)
+            with m1:
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">💳 Média Gastos (60m)</div>
+                        <div class="metric-value">{to_brl(media_gastos)}</div>
+                        <div class="metric-delta">Ticket médio de aposta</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+            with m2:
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">🏆 Média Ganhos (60m)</div>
+                        <div class="metric-value">{to_brl(media_ganhos)}</div>
+                        <div class="metric-delta">Retorno médio por rodada</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+            with m3:
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">🎯 Jogo mais jogado</div>
+                        <div class="metric-value">{jogo_mais_jogado}</div>
+                        <div class="metric-delta">Rodadas: {qtd_jogo_mais:,}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+            with m4:
+                total_rodadas = int(len(df_rodadas_60))
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">⏱️ Rodadas (60m)</div>
+                        <div class="metric-value">{total_rodadas:,}</div>
+                        <div class="metric-delta">Volume recente</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+
+            k1, k2 = st.columns(2)
+            with k1:
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">👑 Cliente com mais ganhos (60m)</div>
+                        <div class="metric-value">{best_ganhos_id}</div>
+                        <div class="metric-delta">Total: {to_brl(best_ganhos_val)}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+            with k2:
+                st.markdown(f'''
+                    <div class="metric-card">
+                        <div class="metric-title">🏃 Cliente com mais jogadas (60m)</div>
+                        <div class="metric-value">{best_rodadas_id}</div>
+                        <div class="metric-delta">Rodadas: {best_rodadas_qtd:,}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+
+            st.markdown("### 🥇 Top clientes por ganhos (60m)")
+            if top_ganhos_clientes.empty:
+                st.info("Sem clientes com ganhos nesta janela.")
+            else:
+                st.dataframe(
+                    top_ganhos_clientes,
+                    use_container_width=True,
+                    height=380,
+                    column_config={
+                        "ganhos_totais": st.column_config.NumberColumn("Ganhos Totais (R$)", format="R$ %.2f"),
+                        "rodadas": "Qtd. Rodadas"
+                    }
+                )
+                create_download_button(top_ganhos_clientes, "📥 Exportar Top Ganhos (60m)", "top_ganhos_60m.csv")
+
+            st.markdown("### 🎮 Top clientes por número de jogadas (60m)")
+            if top_rodadas_clientes.empty:
+                st.info("Sem volume de jogadas nesta janela.")
+            else:
+                st.dataframe(
+                    top_rodadas_clientes,
+                    use_container_width=True,
+                    height=380,
+                    column_config={
+                        "rodadas": "Qtd. Rodadas",
+                        "ganhos_totais": st.column_config.NumberColumn("Ganhos Totais (R$)", format="R$ %.2f") if "ganhos_totais" in top_rodadas_clientes.columns else "Ganhos Totais"
+                    }
+                )
+                create_download_button(top_rodadas_clientes, "📥 Exportar Top Jogadas (60m)", "top_jogadas_60m.csv")
