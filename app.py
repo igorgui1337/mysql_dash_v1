@@ -20,6 +20,9 @@ from db import get_engine
 import os, streamlit as st
 import os, streamlit as st
 
+from pathlib import Path
+import base64
+
 def get_secret(key: str, default: str | None = None):
     # 1º: Streamlit Secrets; 2º: variáveis de ambiente
     return st.secrets.get(key, os.getenv(key, default))
@@ -153,9 +156,11 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
+# --- LOGO ROBUSTA (caminho absoluto + fallback SVG) ---
+from pathlib import Path
+import base64
 
-# ======= Logo + Título =======
-def get_logo_base64():
+def _fallback_svg_b64() -> str:
     svg = f'''
     <svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
         <rect width="200" height="60" fill="{COLOR_BG}" rx="8"/>
@@ -166,36 +171,42 @@ def get_logo_base64():
         <polygon points="150,25 160,30 150,35" fill="{COLOR_TEXT}"/>
     </svg>
     '''
-    return base64.b64encode(svg.encode()).decode()
+    return base64.b64encode(svg.encode()).decode("utf-8")
 
-# ======= Logo + Título =======
-col_logo, col_title = st.columns([1, 3])
+def get_logo_base64(path: str = "assets/logo1.png") -> tuple[str, str]:
+    """
+    Retorna (mime, base64). Tenta PNG no caminho absoluto; se falhar, volta para SVG embutido.
+    """
+    root = Path(__file__).resolve().parent
+    logo_path = (root / path).resolve()
+    try:
+        data = logo_path.read_bytes()
+        return "png", base64.b64encode(data).decode("utf-8")
+    except Exception:
+        return "svg+xml", _fallback_svg_b64()
 
-with col_logo:
-    # carrega a logo em base64 da pasta assets
-    def get_logo_base64(path: str = "assets/logo1.png") -> str:
-        with open(path, "rb") as f:
-            import base64
-            return base64.b64encode(f.read()).decode("utf-8")
+# ---- uso ----
+mime, logo_b64 = get_logo_base64("assets/logo1.png")
+st.markdown(
+    f'''
+    <div class="logo-container">
+        <img src="data:image/{mime};base64,{logo_b64}" width="200" alt="Start Logo"/>
+    </div>
+    ''',
+    unsafe_allow_html=True
+)
 
-    logo_b64 = get_logo_base64("assets/logo1.png")
+# ---- uso ----
+mime, logo_b64 = get_logo_base64("assets/logo1.png")
+st.markdown(
+    f'''
+    <div class="logo-container">
+        <img src="data:image/{mime};base64,{logo_b64}" width="200" alt="Start Logo"/>
+    </div>
+    ''',
+    unsafe_allow_html=True
+)
 
-    st.markdown(
-        f'''
-        <div class="logo-container">
-            <img src="data:image/png;base64,{logo_b64}" width="200" alt="Start Logo"/>
-        </div>
-        ''',
-        unsafe_allow_html=True
-    )
-
-with col_title:
-    st.markdown('''
-        <div class="main-header">
-            <div class="title">📊 Dashboard de Monitoramento</div>
-            <div class="subtitle">MySQL • Payments • Timezone Configurável • Real-time Analytics</div>
-        </div>
-    ''', unsafe_allow_html=True)
 
 engine = get_engine()
 db_name = os.getenv("DB_NAME")
