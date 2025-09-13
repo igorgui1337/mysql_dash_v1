@@ -168,9 +168,27 @@ def get_logo_base64():
     '''
     return base64.b64encode(svg.encode()).decode()
 
+# ======= Logo + Título =======
 col_logo, col_title = st.columns([1, 3])
+
 with col_logo:
-    st.markdown(f'<div class="logo-container"><img src="data:image/svg+xml;base64,{get_logo_base64()}" /></div>', unsafe_allow_html=True)
+    # carrega a logo em base64 da pasta assets
+    def get_logo_base64(path: str = "assets/logo1.png") -> str:
+        with open(path, "rb") as f:
+            import base64
+            return base64.b64encode(f.read()).decode("utf-8")
+
+    logo_b64 = get_logo_base64("assets/logo1.png")
+
+    st.markdown(
+        f'''
+        <div class="logo-container">
+            <img src="data:image/png;base64,{logo_b64}" width="200" alt="Start Logo"/>
+        </div>
+        ''',
+        unsafe_allow_html=True
+    )
+
 with col_title:
     st.markdown('''
         <div class="main-header">
