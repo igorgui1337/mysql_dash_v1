@@ -156,7 +156,12 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
-# --- LOGO ROBUSTA (caminho absoluto + fallback SVG) ---
+
+engine = get_engine()
+db_name = os.getenv("DB_NAME")
+st.caption(f"🔗 Conectado ao Database: **{db_name}**")
+
+# ==== LOGO: fonte única + antidupla ====
 from pathlib import Path
 import base64
 
@@ -173,44 +178,48 @@ def _fallback_svg_b64() -> str:
     '''
     return base64.b64encode(svg.encode()).decode("utf-8")
 
-def get_logo_base64(path: str = "assets/logo1.png") -> tuple[str, str]:
-    """
-    Retorna (mime, base64). Tenta PNG no caminho absoluto; se falhar, volta para SVG embutido.
-    """
+def _resolve_logo_file() -> Path | None:
     root = Path(__file__).resolve().parent
-    logo_path = (root / path).resolve()
-    try:
-        data = logo_path.read_bytes()
-        return "png", base64.b64encode(data).decode("utf-8")
-    except Exception:
-        return "svg+xml", _fallback_svg_b64()
+    assets = root / "assets"
+    prefer = [assets / "logo1.png", assets / "logo.png", assets / "start.png"]
+    for p in prefer:
+        if p.exists():
+            return p
+    if assets.exists():
+        for ext in (".png", ".svg", ".jpg", ".jpeg"):
+            for p in assets.glob(f"*{ext}"):
+                return p
+    return None
 
-# ---- uso ----
-mime, logo_b64 = get_logo_base64("assets/logo1.png")
-st.markdown(
-    f'''
-    <div class="logo-container">
-        <img src="data:image/{mime};base64,{logo_b64}" width="200" alt="Start Logo"/>
-    </div>
-    ''',
-    unsafe_allow_html=True
-)
+def _get_logo_b64() -> tuple[str, str]:
+    """
+    Retorna (mime, base64). Usa a logo real se existir; caso contrário, fallback SVG.
+    """
+    p = _resolve_logo_file()
+    if p and p.exists():
+        ext = p.suffix.lower()
+        mime = "png" if ext == ".png" else "svg+xml" if ext == ".svg" else "jpeg"
+        return mime, base64.b64encode(p.read_bytes()).decode("utf-8")
+    return "svg+xml", _fallback_svg_b64()
 
-# ---- uso ----
-mime, logo_b64 = get_logo_base64("assets/logo1.png")
-st.markdown(
-    f'''
-    <div class="logo-container">
-        <img src="data:image/{mime};base64,{logo_b64}" width="200" alt="Start Logo"/>
-    </div>
-    ''',
-    unsafe_allow_html=True
-)
+def render_logo_once(width: int = 200):
+    # Evita múltiplas renderizações se for chamada mais de uma vez
+    if st.session_state.get("_logo_rendered", False):
+        return
+    mime, b64 = _get_logo_b64()
+    st.markdown(
+        f'''
+        <div class="logo-container">
+            <img src="data:image/{mime};base64,{b64}" width="{width}" alt="Start Logo"/>
+        </div>
+        ''',
+        unsafe_allow_html=True
+    )
+    st.session_state["_logo_rendered"] = True
 
+# ---- chame APENAS ESTA função para desenhar a logo ----
+render_logo_once()
 
-engine = get_engine()
-db_name = os.getenv("DB_NAME")
-st.caption(f"🔗 Conectado ao Database: **{db_name}**")
 
 # ======= Tempo e TZ =======
 TZ_BRT = timezone(timedelta(hours=-3))
